@@ -5,6 +5,8 @@ import AdminDashboard from './components/AdminDashboard.js';
 import UserDashboard from './components/UserDashboard.js';
 import NotFound from './components/NotFound.js';
 
+// Rest of your code remains the same
+
 // Configure routes
 const routes = [
     { path: '/', redirect: '/login' },
