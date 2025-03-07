@@ -4,7 +4,7 @@ import RegisterComponent from './components/RegisterComponent.js';
 import AdminDashboard from './components/AdminDashboard.js';
 import UserDashboard from './components/UserDashboard.js';
 import NotFound from './components/NotFound.js';
-
+// import { createRouter } from 'vue-router';
 // Rest of your code remains the same
 
 // Configure routes
@@ -84,6 +84,7 @@ new Vue({
             <transition name="fade" mode="out-in">
                 <router-view @login-success="isAuthenticated = true" @logout="logout"></router-view>
             </transition>
+            
         </div>
     `
 });

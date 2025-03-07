@@ -1,9 +1,8 @@
 from flask import Flask
 from backend.config import LocalDevelopmentConfig
 from backend.models import db,User,Role
-from flask_security import Security,SQLAlchemyUserDatastore,auth_required
+from flask_security import Security,SQLAlchemyUserDatastore,auth_required,hash_password
 from backend.resources import *
-from werkzeug.security import generate_password_hash
 from datetime import datetime
 
 def createApp():
@@ -31,7 +30,7 @@ with app.app_context():
     if not app.security.datastore.find_user(email = "admin@gmail.com"):
         app.security.datastore.create_user(
             email = "admin@gmail.com",
-            password = generate_password_hash("1234"),
+            password = hash_password("1234"),
             full_name = "Admin",
             active = True,
             roles = ['admin']
@@ -41,7 +40,7 @@ with app.app_context():
     if not app.security.datastore.find_user(email = "user1@gmail.com"):
         app.security.datastore.create_user(
             email = "user1@gmail.com",
-            password = generate_password_hash("1234"),
+            password = hash_password("1234"),
             full_name = "Regular User",
             active = True,
             roles = ['user']
