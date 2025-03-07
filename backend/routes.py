@@ -7,7 +7,8 @@ datastore = app.security.datastore
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    # return render_template('index.html')
+    return "hihihiihi"
 
 @app.route('/login', methods=['POST'])
 def login():
