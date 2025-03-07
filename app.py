@@ -35,7 +35,6 @@ with app.app_context():
                                            password = generate_password_hash("1234"),
                                            roles = ['user'])
     db.session.commit()
-import backend.dbmanage
 import backend.routes
 if(__name__=='__main__'):
     app.run()
