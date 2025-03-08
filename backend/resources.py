@@ -505,6 +505,68 @@ class UserAttemptsAPI(Resource):
         
         return result
 
+
+
+# Add this new class to the resources.py file
+
+class AdminDashboardAPI(Resource):
+    @auth_required('token')
+    @roles_required('admin')
+    def get(self):
+        # Get total counts
+        total_users = User.query.count()
+        total_quizzes = Quiz.query.count()
+        total_subjects = Subject.query.count()
+        total_chapters = Chapter.query.count()
+        total_attempts = UserQuizAttempt.query.count()
+        
+        # Calculate average score
+        attempts = UserQuizAttempt.query.filter(UserQuizAttempt.score.isnot(None)).all()
+        average_score = 0
+        if attempts:
+            average_score = sum(attempt.score for attempt in attempts) / len(attempts)
+        
+        # Get recent quizzes
+        recent_quizzes = []
+        quizzes = Quiz.query.order_by(Quiz.created_at.desc()).limit(5).all()
+        for quiz in quizzes:
+            chapter = Chapter.query.get(quiz.chapter_id)
+            question_count = Question.query.filter_by(quiz_id=quiz.id).count()
+            recent_quizzes.append({
+                'id': quiz.id,
+                'title': quiz.title,
+                'chapter_name': chapter.name if chapter else 'Unknown',
+                'question_count': question_count,
+                'is_published': quiz.is_published
+            })
+        
+        # Get recent attempts
+        recent_attempts = []
+        attempts = UserQuizAttempt.query.filter(UserQuizAttempt.completed_at.isnot(None)).order_by(UserQuizAttempt.completed_at.desc()).limit(5).all()
+        for attempt in attempts:
+            user = User.query.get(attempt.user_id)
+            quiz = Quiz.query.get(attempt.quiz_id)
+            recent_attempts.append({
+                'id': attempt.id,
+                'student_name': user.email.split('@')[0] if user else 'Unknown',
+                'quiz_title': quiz.title if quiz else 'Unknown',
+                'score': attempt.score,
+                'completed_at': attempt.completed_at.isoformat()
+            })
+        
+        return {
+            'stats': {
+                'total_users': total_users,
+                'total_quizzes': total_quizzes,
+                'total_subjects': total_subjects,
+                'total_chapters': total_chapters,
+                'total_attempts': total_attempts,
+                'average_score': average_score
+            },
+            'recent_quizzes': recent_quizzes,
+            'recent_attempts': recent_attempts
+        }
+
 # Register resources
 api.add_resource(SubjectAPI, '/subjects/<int:subject_id>')
 api.add_resource(SubjectListAPI, '/subjects')
@@ -516,3 +578,4 @@ api.add_resource(QuestionAPI, '/questions/<int:question_id>')
 api.add_resource(QuestionListAPI, '/quizzes/<int:quiz_id>/questions')
 api.add_resource(QuizAttemptAPI, '/attempts/<int:attempt_id>', '/quizzes/<int:quiz_id>/attempt')
 api.add_resource(UserAttemptsAPI, '/user/attempts')
+api.add_resource(AdminDashboardAPI, '/api/admin/dashboard')

@@ -10,7 +10,9 @@ export default {
                 totalQuizzes: 0,
                 totalSubjects: 0,
                 totalChapters: 0
-            }
+            },
+            recentQuizzes: [],
+            recentAttempts: []
         }
     },
     created() {
@@ -27,13 +29,21 @@ export default {
                 });
                 this.dashboardData = response.data;
                 
-                // For demo purposes, set some sample stats
+                // Set stats from API data
                 this.stats = {
-                    totalUsers: 24,
-                    totalQuizzes: 15,
-                    totalSubjects: 8,
-                    totalChapters: 32
+                    totalUsers: response.data.stats.total_users || 0,
+                    totalQuizzes: response.data.stats.total_quizzes || 0,
+                    totalSubjects: response.data.stats.total_subjects || 0,
+                    totalChapters: response.data.stats.total_chapters || 0,
+                    totalAttempts: response.data.stats.total_attempts || 0,
+                    averageScore: response.data.stats.average_score || 0
                 };
+                
+                // Use actual recent quizzes data
+                this.recentQuizzes = response.data.recent_quizzes || [];
+                
+                // Use actual recent attempts data
+                this.recentAttempts = response.data.recent_attempts || [];
             } catch (error) {
                 this.error = 'Failed to load dashboard data';
                 console.error(error);
@@ -43,6 +53,30 @@ export default {
         },
         logout() {
             this.$emit('logout');
+        },
+        formatDate(dateString) {
+            return new Date(dateString).toLocaleString();
+        },
+        getScoreClass(score) {
+            if (score >= 80) return 'bg-success';
+            if (score >= 60) return 'bg-primary';
+            if (score >= 40) return 'bg-warning';
+            return 'bg-danger';
+        },
+        navigateToUsers() {
+            this.$router.push('/admin/users');
+        },
+        navigateToSubjects() {
+            this.$router.push('/admin/subjects');
+        },
+        navigateToChapters() {
+            this.$router.push('/admin/chapters');
+        },
+        navigateToQuizzes() {
+            this.$router.push('/admin/quizzes');
+        },
+        navigateToAnalytics() {
+            this.$router.push('/admin/analytics');
         }
     },
     template: `
@@ -72,25 +106,25 @@ export default {
                     </div>
                     
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="#" @click.prevent="navigateToUsers">
                             <i class="fas fa-fw fa-users"></i>
                             <span>Users</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="#" @click.prevent="navigateToSubjects">
                             <i class="fas fa-fw fa-book"></i>
                             <span>Subjects</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="#" @click.prevent="navigateToChapters">
                             <i class="fas fa-fw fa-bookmark"></i>
                             <span>Chapters</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="#" @click.prevent="navigateToQuizzes">
                             <i class="fas fa-fw fa-question-circle"></i>
                             <span>Quizzes</span>
                         </a>
@@ -102,7 +136,7 @@ export default {
                     </div>
                     
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="#" @click.prevent="navigateToAnalytics">
                             <i class="fas fa-fw fa-chart-bar"></i>
                             <span>Analytics</span>
                         </a>
@@ -236,6 +270,189 @@ export default {
                                             </div>
                                             <div class="col-auto">
                                                 <i class="fas fa-bookmark fa-2x text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Additional Stats Row -->
+                        <div class="row mb-4">
+                            <!-- Total Attempts Card -->
+                            <div class="col-xl-6 col-md-6 mb-4">
+                                <div class="card border-left-primary shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                    Total Quiz Attempts</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.totalAttempts }}</div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                            <!-- Average Score Card -->
+                            <div class="col-xl-6 col-md-6 mb-4">
+                                <div class="card border-left-success shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                    Average Quiz Score</div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.averageScore.toFixed(1) }}%</div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Recent Data Row -->
+                        <div class="row">
+                            <!-- Recent Quizzes -->
+                            <div class="col-lg-6 mb-4">
+                                <div class="card shadow mb-4">
+                                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                        <h6 class="m-0 font-weight-bold text-primary">Recent Quizzes</h6>
+                                        <a href="#" @click.prevent="navigateToQuizzes" class="btn btn-sm btn-primary">
+                                            View All
+                                        </a>
+                                    </div>
+                                    <div class="card-body">
+                                        <div v-if="recentQuizzes.length === 0" class="text-center py-3">
+                                            <p class="text-muted">No quizzes created yet</p>
+                                        </div>
+                                        <div v-else class="table-responsive">
+                                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Title</th>
+                                                        <th>Chapter</th>
+                                                        <th>Questions</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="quiz in recentQuizzes" :key="quiz.id">
+                                                        <td>{{ quiz.title }}</td>
+                                                        <td>{{ quiz.chapter_name }}</td>
+                                                        <td>{{ quiz.question_count }}</td>
+                                                        <td>
+                                                            <span class="badge" :class="quiz.is_published ? 'bg-success' : 'bg-warning'">
+                                                                {{ quiz.is_published ? 'Published' : 'Draft' }}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Recent Attempts -->
+                            <div class="col-lg-6 mb-4">
+                                <div class="card shadow mb-4">
+                                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                        <h6 class="m-0 font-weight-bold text-primary">Recent Quiz Attempts</h6>
+                                        <a href="#" @click.prevent="navigateToAnalytics" class="btn btn-sm btn-primary">
+                                            View All
+                                        </a>
+                                    </div>
+                                    <div class="card-body">
+                                        <div v-if="recentAttempts.length === 0" class="text-center py-3">
+                                            <p class="text-muted">No quiz attempts yet</p>
+                                        </div>
+                                        <div v-else class="table-responsive">
+                                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Student</th>
+                                                        <th>Quiz</th>
+                                                        <th>Date</th>
+                                                        <th>Score</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="attempt in recentAttempts" :key="attempt.id">
+                                                        <td>{{ attempt.student_name }}</td>
+                                                        <td>{{ attempt.quiz_title }}</td>
+                                                        <td>{{ formatDate(attempt.completed_at) }}</td>
+                                                        <td>
+                                                            <span class="badge" :class="getScoreClass(attempt.score)">
+                                                                {{ attempt.score.toFixed(1) }}%
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Actions Row -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card shadow mb-4">
+                                    <div class="card-header py-3">
+                                        <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-3 mb-3">
+                                                <div class="card bg-primary text-white h-100">
+                                                    <div class="card-body text-center">
+                                                        <i class="fas fa-users fa-3x mb-3"></i>
+                                                        <h5>Manage Users</h5>
+                                                        <button class="btn btn-light mt-3" @click="navigateToUsers">
+                                                            <i class="fas fa-arrow-right"></i> Go
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <div class="card bg-success text-white h-100">
+                                                    <div class="card-body text-center">
+                                                        <i class="fas fa-book fa-3x mb-3"></i>
+                                                        <h5>Manage Subjects</h5>
+                                                        <button class="btn btn-light mt-3" @click="navigateToSubjects">
+                                                            <i class="fas fa-arrow-right"></i> Go
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <div class="card bg-info text-white h-100">
+                                                    <div class="card-body text-center">
+                                                        <i class="fas fa-bookmark fa-3x mb-3"></i>
+                                                        <h5>Manage Chapters</h5>
+                                                        <button class="btn btn-light mt-3" @click="navigateToChapters">
+                                                            <i class="fas fa-arrow-right"></i> Go
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <div class="card bg-warning text-white h-100">
+                                                    <div class="card-body text-center">
+                                                        <i class="fas fa-question-circle fa-3x mb-3"></i>
+                                                        <h5>Manage Quizzes</h5>
+                                                        <button class="btn btn-light mt-3" @click="navigateToQuizzes">
+                                                            <i class="fas fa-arrow-right"></i> Go
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
