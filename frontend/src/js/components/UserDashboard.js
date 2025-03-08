@@ -126,7 +126,7 @@ export default {
                     
                     <ul class="navbar-nav ms-auto">
                         <li class="nav-item dropdown no-arrow">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                            <a class="nav-link dropdown-toggle text-dark me-3" href="#" id="userDropdown" role="button"
                                 data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <span class="me-2 d-none d-lg-inline text-gray-600">{{ userName }}</span>
                                 <i class="fas fa-user-circle fa-fw"></i>
