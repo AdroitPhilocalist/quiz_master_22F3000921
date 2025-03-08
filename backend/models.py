@@ -31,7 +31,30 @@ class UserRoles(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
+class Subject(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    chapters = db.relationship('Chapter', backref='subject', lazy=True, cascade="all, delete-orphan")
+    creator = db.relationship('User', backref='created_subjects', foreign_keys=[created_by])
 
+
+
+class Chapter(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    quizzes = db.relationship('Quiz', backref='chapter', lazy=True, cascade="all, delete-orphan")
+    creator = db.relationship('User', backref='created_chapters', foreign_keys=[created_by])
 # Quiz related models
 class Quiz(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -41,7 +64,7 @@ class Quiz(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_published = db.Column(db.Boolean, default=False)
-    
+    chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id'), nullable=True)
     # Relationships
     questions = db.relationship('Question', backref='quiz', lazy=True, cascade="all, delete-orphan")
     attempts = db.relationship('UserQuizAttempt', backref='quiz', lazy=True, cascade="all, delete-orphan")
