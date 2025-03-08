@@ -1,130 +1,164 @@
 export default {
-    data() {
-        return {
-            subjects: [],
-            loading: false,
-            error: null,
-            newSubject: {
-                name: '',
-                description: ''
-            },
-            editingSubject: null,
-            showAddModal: false,
-            showEditModal: false,
-            showDeleteModal: false,
-            subjectToDelete: null
-        }
+  data() {
+    return {
+      subjects: [],
+      loading: false,
+      error: null,
+      newSubject: {
+        name: "",
+        description: "",
+      },
+      editingSubject: null,
+      showAddModal: false,
+      showEditModal: false,
+      showDeleteModal: false,
+      subjectToDelete: null,
+    };
+  },
+  created() {
+    this.fetchSubjects();
+  },
+  methods: {
+    showToast(message, title = "Notification", variant = "success") {
+      const toastEl = document.createElement("div");
+      toastEl.className = `toast align-items-center text-white bg-${variant} border-0`;
+      toastEl.setAttribute("role", "alert");
+      toastEl.setAttribute("aria-live", "assertive");
+      toastEl.setAttribute("aria-atomic", "true");
+      toastEl.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <strong>${title}:</strong> ${message}
+            </div>
+             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+      let toastContainer = document.querySelector(".toast-container");
+      if (!toastContainer) {
+        toastContainer = document.createElement("div");
+        toastContainer.className =
+          "toast-container position-fixed top-0 end-0 p-3";
+        toastContainer.style.zIndex = "1100";
+        document.body.appendChild(toastContainer);
+      }
+
+      // Add toast to container
+      toastContainer.appendChild(toastEl);
+
+      // Initialize Bootstrap toast
+      const toast = new bootstrap.Toast(toastEl, {
+        autohide: true,
+        delay: 3000,
+      });
+
+      // Show toast
+      toast.show();
+
+      // Remove toast element after it's hidden
+      toastEl.addEventListener("hidden.bs.toast", () => {
+        toastEl.remove();
+      });
     },
-    created() {
+
+    async fetchSubjects() {
+      this.loading = true;
+      try {
+        const response = await axios.get("/api/subjects", {
+          headers: {
+            "Authentication-Token": localStorage.getItem("token"),
+          },
+        });
+        this.subjects = response.data;
+      } catch (error) {
+        this.error = "Failed to load subjects";
+        console.error(error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    openAddModal() {
+      this.newSubject = { name: "", description: "" };
+      this.showAddModal = true;
+    },
+    openEditModal(subject) {
+      this.editingSubject = { ...subject };
+      this.showEditModal = true;
+    },
+    openDeleteModal(subject) {
+      this.subjectToDelete = subject;
+      this.showDeleteModal = true;
+    },
+    async addSubject() {
+      this.loading = true;
+      try {
+        await axios.post("/api/subjects", this.newSubject, {
+          headers: {
+            "Authentication-Token": localStorage.getItem("token"),
+            "Content-Type": "application/json",
+          },
+        });
+        this.showAddModal = false;
         this.fetchSubjects();
+        this.showToast("Subject added successfully", "Success", "success");
+      } catch (error) {
+        this.error = "Failed to add subject";
+        console.error(error);
+        this.showToast("Failed to add subject", "Error", "danger");
+      } finally {
+        this.loading = false;
+      }
     },
-    methods: {
-        showToast(message, title = 'Notification', variant = 'success') {
-            this.toast = {
-                show: true,
-                message,
-                title,
-                variant,
-            };
-            setTimeout(() => {
-                this.toast.show = false;
-            }, 3000);
-        },
-        async fetchSubjects() {
-            this.loading = true;
-            try {
-                const response = await axios.get('/api/subjects', {
-                    headers: {
-                        'Authentication-Token': localStorage.getItem('token')
-                    }
-                });
-                this.subjects = response.data;
-            } catch (error) {
-                this.error = 'Failed to load subjects';
-                console.error(error);
-            } finally {
-                this.loading = false;
-            }
-        },
-        openAddModal() {
-            this.newSubject = { name: '', description: '' };
-            this.showAddModal = true;
-        },
-        openEditModal(subject) {
-            this.editingSubject = { ...subject };
-            this.showEditModal = true;
-        },
-        openDeleteModal(subject) {
-            this.subjectToDelete = subject;
-            this.showDeleteModal = true;
-        },
-        async addSubject() {
-            this.loading = true;
-            try {
-                await axios.post('/api/subjects', this.newSubject, {
-                    headers: {
-                        'Authentication-Token': localStorage.getItem('token'),
-                        'Content-Type': 'application/json'
-                    }
-                });
-                this.showAddModal = false;
-                this.fetchSubjects();
-                this.showToast('Subject added successfully', 'Success', 'success');
-            } catch (error) {
-                this.error = 'Failed to add subject';
-                console.error(error);
-                this.showToast('Failed to add subject', 'Error', 'danger');
-            } finally {
-                this.loading = false;
-            }
-        },
-        async updateSubject() {
-            this.loading = true;
-            try {
-                await axios.put(`/api/subjects/${this.editingSubject.id}`, {
-                    name: this.editingSubject.name,
-                    description: this.editingSubject.description
-                }, {
-                    headers: {
-                        'Authentication-Token': localStorage.getItem('token'),
-                        'Content-Type': 'application/json'
-                    }
-                });
-                this.showEditModal = false;
-                this.fetchSubjects();
-                this.showToast('Subject updated successfully', 'Success', 'success');
-            } catch (error) {
-                this.error = 'Failed to update subject';
-                console.error(error);
-                this.showToast('Failed to update subject', 'Error', 'danger');
-            } finally {
-                this.loading = false;
-            }
-        },
-        async deleteSubject() {
-            this.loading = true;
-            try {
-                await axios.delete(`/api/subjects/${this.subjectToDelete.id}`, {
-                    headers: {
-                        'Authentication-Token': localStorage.getItem('token')
-                    }
-                });
-                this.showDeleteModal = false;
-                this.fetchSubjects();
-                this.showToast('Subject deleted successfully', 'Success', 'success');
-            } catch (error) {
-                this.error = 'Failed to delete subject';
-                console.error(error);
-                this.showToast('Failed to delete subject', 'Error', 'danger');
-            } finally {
-                this.loading = false;
-            }
-        },
-        viewChapters(subjectId) {
-            this.$router.push(`/admin/subjects/${subjectId}/chapters`);
-        }
+    async updateSubject() {
+      this.loading = true;
+      try {
+        await axios.put(
+          `/api/subjects/${this.editingSubject.id}`,
+          {
+            name: this.editingSubject.name,
+            description: this.editingSubject.description,
+          },
+          {
+            headers: {
+              "Authentication-Token": localStorage.getItem("token"),
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        this.showEditModal = false;
+        this.fetchSubjects();
+        this.showToast("Subject updated successfully", "Success", "success");
+      } catch (error) {
+        this.error = "Failed to update subject";
+        console.error(error);
+        this.showToast("Failed to update subject", "Error", "danger");
+      } finally {
+        this.loading = false;
+      }
     },
-    template: `
+    async deleteSubject() {
+      this.loading = true;
+      try {
+        await axios.delete(`/api/subjects/${this.subjectToDelete.id}`, {
+          headers: {
+            "Authentication-Token": localStorage.getItem("token"),
+          },
+        });
+        this.showDeleteModal = false;
+        this.fetchSubjects();
+        this.showToast("Subject deleted successfully", "Success", "success");
+      } catch (error) {
+        this.error = "Failed to delete subject";
+        console.error(error);
+        this.showToast("Failed to delete subject", "Error", "danger");
+      } finally {
+        this.loading = false;
+      }
+    },
+    viewChapters(subjectId) {
+      this.$router.push(`/admin/subjects/${subjectId}/chapters`);
+    },
+  },
+  template: `
         <div class="container-fluid py-4">
             <div class="row">
                 <div class="col-12">
@@ -274,5 +308,5 @@ export default {
             </div>
             <div class="modal-backdrop fade" :class="{ 'show': showDeleteModal }" v-if="showDeleteModal"></div>
         </div>
-    `
-}
+    `,
+};
