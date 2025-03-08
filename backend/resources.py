@@ -504,11 +504,6 @@ class UserAttemptsAPI(Resource):
             })
         
         return result
-
-
-
-# Add this new class to the resources.py file
-
 class AdminDashboardAPI(Resource):
     @auth_required('token')
     @roles_required('admin')
@@ -578,4 +573,6 @@ api.add_resource(QuestionAPI, '/questions/<int:question_id>')
 api.add_resource(QuestionListAPI, '/quizzes/<int:quiz_id>/questions')
 api.add_resource(QuizAttemptAPI, '/attempts/<int:attempt_id>', '/quizzes/<int:quiz_id>/attempt')
 api.add_resource(UserAttemptsAPI, '/user/attempts')
-api.add_resource(AdminDashboardAPI, '/api/admin/dashboard')
+
+# Make sure this line is at the bottom of the file and not duplicated
+api.add_resource(AdminDashboardAPI, '/admin/dashboard')

@@ -2,45 +2,75 @@ export default {
     props: ['subjectId'],
     data() {
         return {
-            subject: null,
             chapters: [],
             loading: false,
             error: null,
             newChapter: {
                 name: '',
-                description: '',
-                subject_id: null
+                description: ''
             },
             editingChapter: null,
             showAddModal: false,
             showEditModal: false,
             showDeleteModal: false,
-            chapterToDelete: null
+            chapterToDelete: null,
+            subjectName: '',
+            searchQuery: '',
+            sortBy: 'name',
+            sortDesc: false,
+            animateItems: false
         }
     },
     created() {
-        this.newChapter.subject_id = this.subjectId;
-        this.fetchSubject();
         this.fetchChapters();
+        this.fetchSubjectName();
+        // Add animation delay
+        setTimeout(() => {
+            this.animateItems = true;
+        }, 100);
+    },
+    computed: {
+        filteredChapters() {
+            if (!this.searchQuery) return this.chapters;
+            const query = this.searchQuery.toLowerCase();
+            return this.chapters.filter(chapter => 
+                chapter.name.toLowerCase().includes(query) || 
+                (chapter.description && chapter.description.toLowerCase().includes(query))
+            );
+        },
+        sortedChapters() {
+            const chapters = [...this.filteredChapters];
+            return chapters.sort((a, b) => {
+                let modifier = this.sortDesc ? -1 : 1;
+                if (a[this.sortBy] < b[this.sortBy]) return -1 * modifier;
+                if (a[this.sortBy] > b[this.sortBy]) return 1 * modifier;
+                return 0;
+            });
+        }
     },
     methods: {
-        async fetchSubject() {
+        async fetchSubjectName() {
+            if (!this.subjectId) return;
+            
             try {
                 const response = await axios.get(`/api/subjects/${this.subjectId}`, {
                     headers: {
                         'Authentication-Token': localStorage.getItem('token')
                     }
                 });
-                this.subject = response.data;
+                this.subjectName = response.data.name;
             } catch (error) {
-                this.error = 'Failed to load subject details';
-                console.error(error);
+                console.error('Failed to fetch subject name:', error);
             }
         },
         async fetchChapters() {
             this.loading = true;
             try {
-                const response = await axios.get(`/api/subjects/${this.subjectId}/chapters`, {
+                const url = this.subjectId 
+                    ? `/api/subjects/${this.subjectId}/chapters` 
+                    : '/api/chapters';
+                
+                const response = await axios.get(url, {
                     headers: {
                         'Authentication-Token': localStorage.getItem('token')
                     }
@@ -54,11 +84,7 @@ export default {
             }
         },
         openAddModal() {
-            this.newChapter = { 
-                name: '', 
-                description: '',
-                subject_id: this.subjectId
-            };
+            this.newChapter = { name: '', description: '' };
             this.showAddModal = true;
         },
         openEditModal(chapter) {
@@ -72,7 +98,15 @@ export default {
         async addChapter() {
             this.loading = true;
             try {
-                await axios.post(`/api/subjects/${this.subjectId}/chapters`, this.newChapter, {
+                const url = this.subjectId 
+                    ? `/api/subjects/${this.subjectId}/chapters` 
+                    : '/api/chapters';
+                
+                await axios.post(url, {
+                    name: this.newChapter.name,
+                    description: this.newChapter.description,
+                    subject_id: this.subjectId
+                }, {
                     headers: {
                         'Authentication-Token': localStorage.getItem('token'),
                         'Content-Type': 'application/json'
@@ -146,116 +180,147 @@ export default {
         },
         goBack() {
             this.$router.push('/admin/subjects');
+        },
+        sortTable(field) {
+            if (this.sortBy === field) {
+                this.sortDesc = !this.sortDesc;
+            } else {
+                this.sortBy = field;
+                this.sortDesc = false;
+            }
+        },
+        getSortIcon(field) {
+            if (this.sortBy !== field) return 'fa-sort';
+            return this.sortDesc ? 'fa-sort-down' : 'fa-sort-up';
+        },
+        formatDate(dateString) {
+            return new Date(dateString).toLocaleString();
         }
     },
     template: `
-        <div class="container-fluid py-4">
-            <div class="row mb-4">
-                <div class="col-12">
-                    <button class="btn btn-outline-secondary" @click="goBack">
-                        <i class="fas fa-arrow-left me-1"></i> Back to Subjects
+        <div class="container-fluid px-4">
+            <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <button @click="goBack" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-arrow-left"></i>
                     </button>
+                    <h1 class="h3 mb-0 text-gray-800 d-inline-block">
+                        {{ subjectName ? subjectName + ' - Chapters' : 'All Chapters' }}
+                    </h1>
                 </div>
+                <button @click="openAddModal" class="btn btn-primary shadow-sm">
+                    <i class="fas fa-plus fa-sm text-white-50 me-1"></i> Add New Chapter
+                </button>
             </div>
             
-            <div class="row">
-                <div class="col-12">
-                    <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-header bg-gradient-primary text-white py-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">
-                                    {{ subject ? subject.name + ' - Chapters' : 'Chapters' }}
-                                </h5>
-                                <button class="btn btn-light btn-sm" @click="openAddModal">
-                                    <i class="fas fa-plus me-1"></i> Add Chapter
-                                </button>
-                            </div>
+            <div class="card shadow mb-4 border-0">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-gradient-primary text-white">
+                    <h6 class="m-0 font-weight-bold">Manage Chapters</h6>
+                    <div class="input-group w-50">
+                        <input type="text" class="form-control" placeholder="Search chapters..." v-model="searchQuery">
+                        <button class="btn btn-light" type="button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div v-if="loading" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
-                        <div class="card-body">
-                            <div v-if="loading" class="text-center py-5">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                            </div>
-                            <div v-else-if="error" class="alert alert-danger" role="alert">
-                                {{ error }}
-                            </div>
-                            <div v-else-if="chapters.length === 0" class="text-center py-5">
-                                <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
-                                <p class="lead">No chapters found for this subject</p>
-                                <button class="btn btn-primary" @click="openAddModal">
-                                    <i class="fas fa-plus me-1"></i> Add Chapter
-                                </button>
-                            </div>
-                            <div v-else class="table-responsive">
-                                <table class="table table-hover align-middle">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Description</th>
-                                            <th>Created At</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="chapter in chapters" :key="chapter.id">
-                                            <td>{{ chapter.name }}</td>
-                                            <td>{{ chapter.description || 'No description' }}</td>
-                                            <td>{{ new Date(chapter.created_at).toLocaleString() }}</td>
-                                            <td>
-                                                <div class="btn-group">
-                                                    <button class="btn btn-sm btn-outline-primary" @click="viewQuizzes(chapter.id)">
-                                                        <i class="fas fa-list me-1"></i> Quizzes
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-secondary" @click="openEditModal(chapter)">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-danger" @click="openDeleteModal(chapter)">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                    </div>
+                    
+                    <div v-else-if="error" class="alert alert-danger" role="alert">
+                        {{ error }}
+                    </div>
+                    
+                    <div v-else-if="chapters.length === 0" class="text-center py-5">
+                        <div class="empty-state">
+                            <i class="fas fa-book-open fa-4x text-gray-300 mb-3"></i>
+                            <h5>No Chapters Found</h5>
+                            <p class="text-muted">Start by adding your first chapter</p>
+                            <button @click="openAddModal" class="btn btn-primary mt-2">
+                                <i class="fas fa-plus me-1"></i> Add Chapter
+                            </button>
                         </div>
+                    </div>
+                    
+                    <div v-else class="table-responsive">
+                        <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th @click="sortTable('name')" class="sortable">
+                                        Name <i :class="['fas', getSortIcon('name')]"></i>
+                                    </th>
+                                    <th @click="sortTable('description')" class="sortable">
+                                        Description <i :class="['fas', getSortIcon('description')]"></i>
+                                    </th>
+                                    <th @click="sortTable('created_at')" class="sortable">
+                                        Created At <i :class="['fas', getSortIcon('created_at')]"></i>
+                                    </th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="chapter in sortedChapters" :key="chapter.id" 
+                                    :class="{'animate__animated animate__fadeIn': animateItems}">
+                                    <td>{{ chapter.name }}</td>
+                                    <td>{{ chapter.description || 'No description' }}</td>
+                                    <td>{{ formatDate(chapter.created_at) }}</td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <button @click="viewQuizzes(chapter.id)" class="btn btn-sm btn-info">
+                                                <i class="fas fa-list me-1"></i> Quizzes
+                                            </button>
+                                            <button @click="openEditModal(chapter)" class="btn btn-sm btn-primary ms-1">
+                                                <i class="fas fa-edit me-1"></i> Edit
+                                            </button>
+                                            <button @click="openDeleteModal(chapter)" class="btn btn-sm btn-danger ms-1">
+                                                <i class="fas fa-trash me-1"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-
+            
             <!-- Add Chapter Modal -->
-            <div class="modal fade" :class="{ 'show d-block': showAddModal }" tabindex="-1" role="dialog">
+            <div class="modal fade" :class="{ show: showAddModal }" tabindex="-1" role="dialog" 
+                 :style="{ display: showAddModal ? 'block' : 'none' }">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header bg-primary text-white">
-                            <h5 class="modal-title">Add Chapter</h5>
+                            <h5 class="modal-title">Add New Chapter</h5>
                             <button type="button" class="btn-close btn-close-white" @click="showAddModal = false"></button>
                         </div>
                         <div class="modal-body">
                             <div class="mb-3">
-                                <label for="chapterName" class="form-label">Name</label>
+                                <label for="chapterName" class="form-label">Chapter Name</label>
                                 <input type="text" class="form-control" id="chapterName" v-model="newChapter.name" required>
                             </div>
                             <div class="mb-3">
                                 <label for="chapterDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="chapterDescription" v-model="newChapter.description" rows="3"></textarea>
+                                <textarea class="form-control" id="chapterDescription" rows="3" v-model="newChapter.description"></textarea>
                             </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" @click="showAddModal = false">Cancel</button>
-                            <button type="button" class="btn btn-primary" @click="addChapter" :disabled="loading || !newChapter.name">
+                            <button type="button" class="btn btn-primary" @click="addChapter" :disabled="!newChapter.name || loading">
                                 <span v-if="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                                Add Chapter
+                                Create Chapter
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-backdrop fade" :class="{ 'show': showAddModal }" v-if="showAddModal"></div>
-
+            <div v-if="showAddModal" class="modal-backdrop fade show"></div>
+            
             <!-- Edit Chapter Modal -->
-            <div class="modal fade" :class="{ 'show d-block': showEditModal }" tabindex="-1" role="dialog">
+            <div class="modal fade" :class="{ show: showEditModal }" tabindex="-1" role="dialog" 
+                 :style="{ display: showEditModal ? 'block' : 'none' }">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header bg-primary text-white">
@@ -264,17 +329,17 @@ export default {
                         </div>
                         <div class="modal-body" v-if="editingChapter">
                             <div class="mb-3">
-                                <label for="editChapterName" class="form-label">Name</label>
+                                <label for="editChapterName" class="form-label">Chapter Name</label>
                                 <input type="text" class="form-control" id="editChapterName" v-model="editingChapter.name" required>
                             </div>
                             <div class="mb-3">
                                 <label for="editChapterDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="editChapterDescription" v-model="editingChapter.description" rows="3"></textarea>
+                                <textarea class="form-control" id="editChapterDescription" rows="3" v-model="editingChapter.description"></textarea>
                             </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" @click="showEditModal = false">Cancel</button>
-                            <button type="button" class="btn btn-primary" @click="updateChapter" :disabled="loading || !editingChapter?.name">
+                            <button type="button" class="btn btn-primary" @click="updateChapter" :disabled="!editingChapter || !editingChapter.name || loading">
                                 <span v-if="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
                                 Update Chapter
                             </button>
@@ -282,10 +347,11 @@ export default {
                     </div>
                 </div>
             </div>
-            <div class="modal-backdrop fade" :class="{ 'show': showEditModal }" v-if="showEditModal"></div>
-
+            <div v-if="showEditModal" class="modal-backdrop fade show"></div>
+            
             <!-- Delete Chapter Modal -->
-            <div class="modal fade" :class="{ 'show d-block': showDeleteModal }" tabindex="-1" role="dialog">
+            <div class="modal fade" :class="{ show: showDeleteModal }" tabindex="-1" role="dialog" 
+                 :style="{ display: showDeleteModal ? 'block' : 'none' }">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header bg-danger text-white">
@@ -294,7 +360,7 @@ export default {
                         </div>
                         <div class="modal-body" v-if="chapterToDelete">
                             <p>Are you sure you want to delete the chapter <strong>{{ chapterToDelete.name }}</strong>?</p>
-                            <p class="text-danger"><strong>Warning:</strong> This will also delete all quizzes and questions associated with this chapter.</p>
+                            <p class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i> This action cannot be undone and will delete all associated quizzes and questions.</p>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
@@ -306,7 +372,7 @@ export default {
                     </div>
                 </div>
             </div>
-            <div class="modal-backdrop fade" :class="{ 'show': showDeleteModal }" v-if="showDeleteModal"></div>
+            <div v-if="showDeleteModal" class="modal-backdrop fade show"></div>
         </div>
     `
 }

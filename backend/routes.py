@@ -89,8 +89,8 @@ def register():
 def user_dashboard():
     return jsonify({"message": "User dashboard access granted", "status": "success"})
 
-@app.route('/api/admin/dashboard')
-@auth_required('token')
-@roles_required('admin')
-def admin_dashboard():
-    return jsonify({"message": "Admin dashboard access granted", "status": "success"})
+# @app.route('/api/admin/dashboard')
+# @auth_required('token')
+# @roles_required('admin')
+# def admin_dashboard():
+#     return jsonify({"message": "Admin dashboard access granted", "status": "success"})

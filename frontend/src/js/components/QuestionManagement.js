@@ -11,18 +11,46 @@ export default {
                 options: [
                     { text: '', is_correct: true },
                     { text: '', is_correct: false }
-                ]
+                ],
+                quiz_id: null
             },
             editingQuestion: null,
             showAddModal: false,
             showEditModal: false,
             showDeleteModal: false,
-            questionToDelete: null
+            questionToDelete: null,
+            searchQuery: '',
+            sortBy: 'id',
+            sortDesc: false,
+            animateItems: false
         }
     },
     created() {
+        this.newQuestion.quiz_id = this.quizId;
         this.fetchQuiz();
         this.fetchQuestions();
+        // Add animation delay
+        setTimeout(() => {
+            this.animateItems = true;
+        }, 100);
+    },
+    computed: {
+        filteredQuestions() {
+            if (!this.searchQuery) return this.questions;
+            const query = this.searchQuery.toLowerCase();
+            return this.questions.filter(question => 
+                question.text.toLowerCase().includes(query)
+            );
+        },
+        sortedQuestions() {
+            const questions = [...this.filteredQuestions];
+            return questions.sort((a, b) => {
+                let modifier = this.sortDesc ? -1 : 1;
+                if (a[this.sortBy] < b[this.sortBy]) return -1 * modifier;
+                if (a[this.sortBy] > b[this.sortBy]) return 1 * modifier;
+                return 0;
+            });
+        }
     },
     methods: {
         async fetchQuiz() {
@@ -60,41 +88,79 @@ export default {
                 options: [
                     { text: '', is_correct: true },
                     { text: '', is_correct: false }
-                ]
+                ],
+                quiz_id: this.quizId
             };
             this.showAddModal = true;
         },
         openEditModal(question) {
-            // Deep clone the question to avoid modifying the original
-            this.editingQuestion = JSON.parse(JSON.stringify(question));
+            this.editingQuestion = JSON.parse(JSON.stringify(question)); // Deep copy
             this.showEditModal = true;
         },
         openDeleteModal(question) {
             this.questionToDelete = question;
             this.showDeleteModal = true;
         },
-        addOption() {
-            if (this.showAddModal) {
-                this.newQuestion.options.push({ text: '', is_correct: false });
-            } else if (this.showEditModal && this.editingQuestion) {
-                this.editingQuestion.options.push({ text: '', is_correct: false });
+        addOption(question) {
+            if (!question) question = this.editingQuestion;
+            question.options.push({ text: '', is_correct: false });
+        },
+        removeOption(question, index) {
+            if (typeof question === 'number') {
+                // If first argument is a number, it's the index from edit modal
+                index = question;
+                question = this.editingQuestion;
+            }
+            
+            if (question.options.length > 2) {
+                question.options.splice(index, 1);
+                
+                // Ensure at least one option is marked as correct
+                if (!question.options.some(opt => opt.is_correct)) {
+                    question.options[0].is_correct = true;
+                }
             }
         },
-        removeOption(index) {
-            if (this.showAddModal && this.newQuestion.options.length > 2) {
-                this.newQuestion.options.splice(index, 1);
-            } else if (this.showEditModal && this.editingQuestion && this.editingQuestion.options.length > 2) {
-                this.editingQuestion.options.splice(index, 1);
+        setCorrectOption(index, isMultipleChoice = false) {
+            if (!this.editingQuestion) return;
+            
+            if (!isMultipleChoice) {
+                // Single choice - unselect all other options
+                this.editingQuestion.options.forEach((option, i) => {
+                    option.is_correct = (i === index);
+                });
+            } else {
+                // Multiple choice - toggle the selected option
+                this.editingQuestion.options[index].is_correct = !this.editingQuestion.options[index].is_correct;
+                
+                // Ensure at least one option is marked as correct
+                if (!this.editingQuestion.options.some(opt => opt.is_correct)) {
+                    this.editingQuestion.options[index].is_correct = true;
+                }
             }
         },
-        setCorrectOption(index, isAdd = true) {
-            const options = isAdd ? this.newQuestion.options : this.editingQuestion.options;
+        validateQuestion(question) {
+            // Check if question text is provided
+            if (!question.text.trim()) {
+                this.error = 'Question text is required';
+                return false;
+            }
             
-            // Set all options to not correct
-            options.forEach(option => option.is_correct = false);
+            // Check if all options have text
+            for (const option of question.options) {
+                if (!option.text.trim()) {
+                    this.error = 'All options must have text';
+                    return false;
+                }
+            }
             
-            // Set the selected option as correct
-            options[index].is_correct = true;
+            // Check if at least one option is marked as correct
+            if (!question.options.some(opt => opt.is_correct)) {
+                this.error = 'At least one option must be marked as correct';
+                return false;
+            }
+            
+            return true;
         },
         async addQuestion() {
             if (!this.validateQuestion(this.newQuestion)) return;
@@ -168,36 +234,23 @@ export default {
                 this.loading = false;
             }
         },
-        validateQuestion(question) {
-            if (!question.text.trim()) {
-                this.error = 'Question text is required';
-                return false;
-            }
-            
-            // Check if at least 2 options are provided
-            if (question.options.length < 2) {
-                this.error = 'At least two options are required';
-                return false;
-            }
-            
-            // Check if all options have text
-            for (const option of question.options) {
-                if (!option.text.trim()) {
-                    this.error = 'All options must have text';
-                    return false;
-                }
-            }
-            
-            // Check if at least one option is marked as correct
-            if (!question.options.some(option => option.is_correct)) {
-                this.error = 'At least one option must be marked as correct';
-                return false;
-            }
-            
-            return true;
-        },
         goBack() {
             this.$router.push(`/admin/chapters/${this.quiz?.chapter_id}/quizzes`);
+        },
+        sortTable(field) {
+            if (this.sortBy === field) {
+                this.sortDesc = !this.sortDesc;
+            } else {
+                this.sortBy = field;
+                this.sortDesc = false;
+            }
+        },
+        getSortIcon(field) {
+            if (this.sortBy !== field) return 'fa-sort';
+            return this.sortDesc ? 'fa-sort-down' : 'fa-sort-up';
+        },
+        formatDate(dateString) {
+            return new Date(dateString).toLocaleString();
         }
     },
     template: `
@@ -218,9 +271,17 @@ export default {
                                 <h5 class="mb-0">
                                     {{ quiz ? quiz.title + ' - Questions' : 'Questions' }}
                                 </h5>
-                                <button class="btn btn-light btn-sm" @click="openAddModal">
-                                    <i class="fas fa-plus me-1"></i> Add Question
-                                </button>
+                                <div>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Search questions..." v-model="searchQuery">
+                                        <button class="btn btn-light" type="button">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                        <button class="btn btn-light ms-2" @click="openAddModal">
+                                            <i class="fas fa-plus me-1"></i> Add Question
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="card-body">
@@ -240,27 +301,46 @@ export default {
                                 </button>
                             </div>
                             <div v-else>
-                                <div class="card mb-3" v-for="(question, index) in questions" :key="question.id">
-                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0">Question {{ index + 1 }}</h6>
-                                        <div class="btn-group">
-                                            <button class="btn btn-sm btn-outline-secondary" @click="openEditModal(question)">
-                                                <i class="fas fa-edit"></i>
+                                <div class="accordion" id="questionsAccordion">
+                                    <div v-for="(question, index) in sortedQuestions" :key="question.id" 
+                                         class="accordion-item mb-3 border shadow-sm"
+                                         :class="{'animate__animated animate__fadeIn': animateItems}">
+                                        <h2 class="accordion-header" :id="'heading' + question.id">
+                                            <button class="accordion-button collapsed" type="button" 
+                                                    data-bs-toggle="collapse" :data-bs-target="'#collapse' + question.id" 
+                                                    aria-expanded="false" :aria-controls="'collapse' + question.id">
+                                                <div class="d-flex justify-content-between w-100 align-items-center">
+                                                    <div>
+                                                        <span class="badge bg-primary me-2">Q{{ index + 1 }}</span>
+                                                        {{ question.text }}
+                                                    </div>
+                                                    <div class="btn-group">
+                                                        <button @click.stop.prevent="openEditModal(question)" class="btn btn-sm btn-outline-primary">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button @click.stop.prevent="openDeleteModal(question)" class="btn btn-sm btn-outline-danger">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger" @click="openDeleteModal(question)">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
+                                        </h2>
+                                        <div :id="'collapse' + question.id" class="accordion-collapse collapse" 
+                                             :aria-labelledby="'heading' + question.id" data-bs-parent="#questionsAccordion">
+                                            <div class="accordion-body">
+                                                <h6>Options:</h6>
+                                                <ul class="list-group">
+                                                    <li v-for="option in question.options" :key="option.id" 
+                                                        class="list-group-item d-flex justify-content-between align-items-center">
+                                                        {{ option.text }}
+                                                        <span v-if="option.is_correct" class="badge bg-success">Correct</span>
+                                                    </li>
+                                                </ul>
+                                                <div class="mt-3 text-muted small">
+                                                    Created: {{ formatDate(question.created_at) }}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="card-body">
-                                        <p class="card-text">{{ question.text }}</p>
-                                        <ul class="list-group">
-                                            <li v-for="option in question.options" :key="option.id" 
-                                                class="list-group-item d-flex justify-content-between align-items-center">
-                                                {{ option.text }}
-                                                <span v-if="option.is_correct" class="badge bg-success">Correct</span>
-                                            </li>
-                                        </ul>
                                     </div>
                                 </div>
                             </div>
@@ -278,48 +358,39 @@ export default {
                             <button type="button" class="btn-close btn-close-white" @click="showAddModal = false"></button>
                         </div>
                         <div class="modal-body">
-                            <div v-if="error" class="alert alert-danger" role="alert">
-                                {{ error }}
-                            </div>
                             <div class="mb-3">
                                 <label for="questionText" class="form-label">Question Text</label>
                                 <textarea class="form-control" id="questionText" v-model="newQuestion.text" rows="3" required></textarea>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label d-flex justify-content-between align-items-center">
-                                    Options
-                                    <button type="button" class="btn btn-sm btn-outline-primary" @click="addOption">
-                                        <i class="fas fa-plus me-1"></i> Add Option
-                                    </button>
-                                </label>
-                                <div class="card mb-2" v-for="(option, index) in newQuestion.options" :key="index">
-                                    <div class="card-body p-3">
-                                        <div class="d-flex align-items-center">
-                                            <div class="form-check me-3">
-                                                <input class="form-check-input" type="radio" :id="'option-' + index" 
-                                                    :checked="option.is_correct" 
-                                                    @change="setCorrectOption(index, true)">
-                                                <label class="form-check-label" :for="'option-' + index">
-                                                    Correct
-                                                </label>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <input type="text" class="form-control" v-model="option.text" 
-                                                    placeholder="Option text" required>
-                                            </div>
-                                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" 
-                                                @click="removeOption(index)" 
-                                                :disabled="newQuestion.options.length <= 2">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
+                            
+                            <h6>Options <small class="text-muted">(Select at least one correct answer)</small></h6>
+                            <div class="card mb-2" v-for="(option, index) in newQuestion.options" :key="index">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="form-check me-3">
+                                            <input class="form-check-input" type="checkbox" :id="'option' + index" v-model="option.is_correct">
+                                            <label class="form-check-label" :for="'option' + index">
+                                                Correct
+                                            </label>
                                         </div>
+                                        <div class="flex-grow-1">
+                                            <input type="text" class="form-control" placeholder="Option text" v-model="option.text" required>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-danger ms-2" @click="removeOption(newQuestion, index)" 
+                                                :disabled="newQuestion.options.length <= 2">
+                                            <i class="fas fa-times"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
+                            
+                            <button type="button" class="btn btn-outline-secondary" @click="addOption(newQuestion)">
+                                <i class="fas fa-plus me-1"></i> Add Option
+                            </button>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" @click="showAddModal = false">Cancel</button>
-                            <button type="button" class="btn btn-primary" @click="addQuestion" :disabled="loading || !newQuestion.text">
+                            <button type="button" class="btn btn-primary" @click="addQuestion" :disabled="loading">
                                 <span v-if="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
                                 Add Question
                             </button>
@@ -348,7 +419,7 @@ export default {
                             <div class="mb-3">
                                 <label class="form-label d-flex justify-content-between align-items-center">
                                     Options
-                                    <button type="button" class="btn btn-sm btn-outline-primary" @click="addOption">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @click="addOption(editingQuestion)">
                                         <i class="fas fa-plus me-1"></i> Add Option
                                     </button>
                                 </label>
@@ -356,9 +427,9 @@ export default {
                                     <div class="card-body p-3">
                                         <div class="d-flex align-items-center">
                                             <div class="form-check me-3">
-                                                <input class="form-check-input" type="radio" :id="'edit-option-' + index" 
+                                                <input class="form-check-input" type="checkbox" :id="'edit-option-' + index" 
                                                     :checked="option.is_correct" 
-                                                    @change="setCorrectOption(index, false)">
+                                                    @change="setCorrectOption(index, true)">
                                                 <label class="form-check-label" :for="'edit-option-' + index">
                                                     Correct
                                                 </label>

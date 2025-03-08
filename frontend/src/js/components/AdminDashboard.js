@@ -27,26 +27,39 @@ export default {
                         'Authentication-Token': localStorage.getItem('token')
                     }
                 });
+                
+                // Log the full response to debug
+                console.log('Dashboard API response:', response.data);
+                
+                // Store the full response
                 this.dashboardData = response.data;
                 
                 // Set stats from API data
-                this.stats = {
-                    totalUsers: response.data.stats.total_users || 0,
-                    totalQuizzes: response.data.stats.total_quizzes || 0,
-                    totalSubjects: response.data.stats.total_subjects || 0,
-                    totalChapters: response.data.stats.total_chapters || 0,
-                    totalAttempts: response.data.stats.total_attempts || 0,
-                    averageScore: response.data.stats.average_score || 0
-                };
-                
-                // Use actual recent quizzes data
-                this.recentQuizzes = response.data.recent_quizzes || [];
-                
-                // Use actual recent attempts data
-                this.recentAttempts = response.data.recent_attempts || [];
+                if (response.data && response.data.stats) {
+                    this.stats = {
+                        totalUsers: response.data.stats.total_users || 0,
+                        totalQuizzes: response.data.stats.total_quizzes || 0,
+                        totalSubjects: response.data.stats.total_subjects || 0,
+                        totalChapters: response.data.stats.total_chapters || 0,
+                        totalAttempts: response.data.stats.total_attempts || 0,
+                        averageScore: response.data.stats.average_score || 0
+                    };
+                    
+                    // Use actual recent quizzes data
+                    this.recentQuizzes = response.data.recent_quizzes || [];
+                    
+                    // Use actual recent attempts data
+                    this.recentAttempts = response.data.recent_attempts || [];
+                } else {
+                    console.error('Invalid response format:', response.data);
+                    this.error = 'Invalid response format from server';
+                }
             } catch (error) {
                 this.error = 'Failed to load dashboard data';
-                console.error(error);
+                console.error('API error:', error);
+                if (error.response) {
+                    console.error('Error response:', error.response.data);
+                }
             } finally {
                 this.loading = false;
             }

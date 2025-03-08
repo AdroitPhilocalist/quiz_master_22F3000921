@@ -19,6 +19,17 @@ export default {
         this.fetchSubjects();
     },
     methods: {
+        showToast(message, title = 'Notification', variant = 'success') {
+            this.toast = {
+                show: true,
+                message,
+                title,
+                variant,
+            };
+            setTimeout(() => {
+                this.toast.show = false;
+            }, 3000);
+        },
         async fetchSubjects() {
             this.loading = true;
             try {
@@ -58,14 +69,11 @@ export default {
                 });
                 this.showAddModal = false;
                 this.fetchSubjects();
-                this.$bvToast.toast('Subject added successfully', {
-                    title: 'Success',
-                    variant: 'success',
-                    solid: true
-                });
+                this.showToast('Subject added successfully', 'Success', 'success');
             } catch (error) {
                 this.error = 'Failed to add subject';
                 console.error(error);
+                this.showToast('Failed to add subject', 'Error', 'danger');
             } finally {
                 this.loading = false;
             }
@@ -84,14 +92,11 @@ export default {
                 });
                 this.showEditModal = false;
                 this.fetchSubjects();
-                this.$bvToast.toast('Subject updated successfully', {
-                    title: 'Success',
-                    variant: 'success',
-                    solid: true
-                });
+                this.showToast('Subject updated successfully', 'Success', 'success');
             } catch (error) {
                 this.error = 'Failed to update subject';
                 console.error(error);
+                this.showToast('Failed to update subject', 'Error', 'danger');
             } finally {
                 this.loading = false;
             }
@@ -106,14 +111,11 @@ export default {
                 });
                 this.showDeleteModal = false;
                 this.fetchSubjects();
-                this.$bvToast.toast('Subject deleted successfully', {
-                    title: 'Success',
-                    variant: 'success',
-                    solid: true
-                });
+                this.showToast('Subject deleted successfully', 'Success', 'success');
             } catch (error) {
                 this.error = 'Failed to delete subject';
                 console.error(error);
+                this.showToast('Failed to delete subject', 'Error', 'danger');
             } finally {
                 this.loading = false;
             }

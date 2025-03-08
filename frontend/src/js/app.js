@@ -4,18 +4,47 @@ import RegisterComponent from './components/RegisterComponent.js';
 import AdminDashboard from './components/AdminDashboard.js';
 import UserDashboard from './components/UserDashboard.js';
 import NotFound from './components/NotFound.js';
+import SubjectManagement from './components/SubjectManagement.js';
+import ChapterManagement from './components/ChapterManagement.js';
+import QuizManagement from './components/QuizManagement.js';
+import QuestionManagement from './components/QuestionManagement.js';
 // import { createRouter } from 'vue-router';
-// Rest of your code remains the same
-
-// Configure routes
+import { BootstrapVue3 } from 'bootstrap-vue-3';
+import 'bootstrap/dist/css/bootstrap.css';
+import 'bootstrap-vue-3/dist/bootstrap-vue-3.css';
 const routes = [
     { path: '/', redirect: '/login' },
     { path: '/login', component: LoginComponent },
     { path: '/register', component: RegisterComponent },
-    { 
-        path: '/admin', 
-        component: AdminDashboard,
-        meta: { requiresAuth: true, role: 'admin' }
+    
+    // Admin routes
+    {
+      path: '/admin',
+      component: AdminDashboard,
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/subjects',
+      component: SubjectManagement,
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/subjects/:subjectId/chapters',
+      component: ChapterManagement,
+      props: true,
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/chapters/:chapterId/quizzes',
+      component: QuizManagement,
+      props: true,
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/quizzes/:quizId/questions',
+      component: QuestionManagement,
+      props: true,
+      meta: { requiresAuth: true, requiresAdmin: true }
     },
     { 
         path: '/user', 
@@ -23,7 +52,7 @@ const routes = [
         meta: { requiresAuth: true, role: 'user' }
     },
     { path: '*', component: NotFound }
-];
+  ]
 
 const router = new VueRouter({
     routes
@@ -59,7 +88,7 @@ router.beforeEach((to, from, next) => {
 });
 
 // Create Vue app
-new Vue({
+const app= new Vue({
     el: '#app',
     router,
     data: {
@@ -88,3 +117,5 @@ new Vue({
         </div>
     `
 });
+
+app.use(BootstrapVue3);
