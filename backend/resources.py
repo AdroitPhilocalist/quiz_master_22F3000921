@@ -1,8 +1,8 @@
 from flask import jsonify, request
 from flask_restful import Api, Resource, fields, marshal_with
 from flask_security import auth_required, current_user, roles_required
-from backend.models import db, User, Role, Quiz, Question, Option, UserQuizAttempt, UserAnswer
-
+from backend.models import *
+from datetime import datetime
 api = Api(prefix='/api')
 
 # Define fields for marshalling
@@ -27,6 +27,23 @@ question_fields = {
     'options': fields.List(fields.Nested(option_fields))
 }
 
+# New field definitions for Subject and Chapter
+subject_fields = {
+    'id': fields.Integer,
+    'name': fields.String,
+    'description': fields.String,
+    'created_by': fields.Integer,
+    'created_at': fields.DateTime
+}
+
+chapter_fields = {
+    'id': fields.Integer,
+    'name': fields.String,
+    'description': fields.String,
+    'subject_id': fields.Integer,
+    'created_by': fields.Integer,
+    'created_at': fields.DateTime
+}
 quiz_fields = {
     'id': fields.Integer,
     'title': fields.String,
@@ -34,9 +51,9 @@ quiz_fields = {
     'time_limit': fields.Integer,
     'created_by': fields.Integer,
     'created_at': fields.DateTime,
-    'is_published': fields.Boolean
+    'is_published': fields.Boolean,
+    'chapter_id': fields.Integer
 }
-
 quiz_detail_fields = {
     'id': fields.Integer,
     'title': fields.String,
@@ -45,6 +62,7 @@ quiz_detail_fields = {
     'created_by': fields.Integer,
     'created_at': fields.DateTime,
     'is_published': fields.Boolean,
+    'chapter_id': fields.Integer,
     'questions': fields.List(fields.Nested(question_fields))
 }
 
