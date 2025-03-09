@@ -51,6 +51,46 @@ export default {
         }
     },
     methods: {
+        showToast(message, title = "Notification", variant = "success") {
+            const toastEl = document.createElement("div");
+            toastEl.className = `toast align-items-center text-white bg-${variant} border-0`;
+            toastEl.setAttribute("role", "alert");
+            toastEl.setAttribute("aria-live", "assertive");
+            toastEl.setAttribute("aria-atomic", "true");
+            toastEl.innerHTML = `
+              <div class="d-flex">
+                  <div class="toast-body">
+                      <strong>${title}:</strong> ${message}
+                  </div>
+                   <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+              </div>
+          `;
+            let toastContainer = document.querySelector(".toast-container");
+            if (!toastContainer) {
+              toastContainer = document.createElement("div");
+              toastContainer.className =
+                "toast-container position-fixed top-0 end-0 p-3";
+              toastContainer.style.zIndex = "1100";
+              document.body.appendChild(toastContainer);
+            }
+      
+            // Add toast to container
+            toastContainer.appendChild(toastEl);
+      
+            // Initialize Bootstrap toast
+            const toast = new bootstrap.Toast(toastEl, {
+              autohide: true,
+              delay: 3000,
+            });
+      
+            // Show toast
+            toast.show();
+      
+            // Remove toast element after it's hidden
+            toastEl.addEventListener("hidden.bs.toast", () => {
+              toastEl.remove();
+            });
+          },
         async fetchChapterName() {
             if (!this.chapterId) return;
             
@@ -123,14 +163,11 @@ export default {
                 });
                 this.showAddModal = false;
                 this.fetchQuizzes();
-                this.$bvToast.toast('Quiz added successfully', {
-                    title: 'Success',
-                    variant: 'success',
-                    solid: true
-                });
+                this.showToast("Quiz added successfully", "Success", "success");
             } catch (error) {
                 this.error = 'Failed to add quiz';
                 console.error(error);
+                this.showToast("Failed to add quiz", "Error", "danger");
             } finally {
                 this.loading = false;
             }
@@ -152,14 +189,11 @@ export default {
                 });
                 this.showEditModal = false;
                 this.fetchQuizzes();
-                this.$bvToast.toast('Quiz updated successfully', {
-                    title: 'Success',
-                    variant: 'success',
-                    solid: true
-                });
+                this.showToast("Quiz updated successfully", "Success", "success");
             } catch (error) {
                 this.error = 'Failed to update quiz';
                 console.error(error);
+                this.showToast("Failed to update quiz", "Error", "danger");
             } finally {
                 this.loading = false;
             }
@@ -174,14 +208,11 @@ export default {
                 });
                 this.showDeleteModal = false;
                 this.fetchQuizzes();
-                this.$bvToast.toast('Quiz deleted successfully', {
-                    title: 'Success',
-                    variant: 'success',
-                    solid: true
-                });
+                this.showToast("Quiz deleted successfully", "Success", "success");
             } catch (error) {
                 this.error = 'Failed to delete quiz';
                 console.error(error);
+                this.showToast("Failed to delete quiz", "Error", "danger");
             } finally {
                 this.loading = false;
             }

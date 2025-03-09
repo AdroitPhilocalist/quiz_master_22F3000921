@@ -49,6 +49,46 @@ export default {
         }
     },
     methods: {
+        showToast(message, title = "Notification", variant = "success") {
+            const toastEl = document.createElement("div");
+            toastEl.className = `toast align-items-center text-white bg-${variant} border-0`;
+            toastEl.setAttribute("role", "alert");
+            toastEl.setAttribute("aria-live", "assertive");
+            toastEl.setAttribute("aria-atomic", "true");
+            toastEl.innerHTML = `
+              <div class="d-flex">
+                  <div class="toast-body">
+                      <strong>${title}:</strong> ${message}
+                  </div>
+                   <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+              </div>
+          `;
+            let toastContainer = document.querySelector(".toast-container");
+            if (!toastContainer) {
+              toastContainer = document.createElement("div");
+              toastContainer.className =
+                "toast-container position-fixed top-0 end-0 p-3";
+              toastContainer.style.zIndex = "1100";
+              document.body.appendChild(toastContainer);
+            }
+      
+            // Add toast to container
+            toastContainer.appendChild(toastEl);
+      
+            // Initialize Bootstrap toast
+            const toast = new bootstrap.Toast(toastEl, {
+              autohide: true,
+              delay: 3000,
+            });
+      
+            // Show toast
+            toast.show();
+      
+            // Remove toast element after it's hidden
+            toastEl.addEventListener("hidden.bs.toast", () => {
+              toastEl.remove();
+            });
+          },
         async fetchSubjectName() {
             if (!this.subjectId) return;
             
@@ -114,14 +154,11 @@ export default {
                 });
                 this.showAddModal = false;
                 this.fetchChapters();
-                this.$bvToast.toast('Chapter added successfully', {
-                    title: 'Success',
-                    variant: 'success',
-                    solid: true
-                });
+                this.showToast("Chapter added successfully", "Success", "success");
             } catch (error) {
                 this.error = 'Failed to add chapter';
                 console.error(error);
+                this.showToast("Failed to add chapter", "Error", "danger");
             } finally {
                 this.loading = false;
             }
@@ -141,14 +178,11 @@ export default {
                 });
                 this.showEditModal = false;
                 this.fetchChapters();
-                this.$bvToast.toast('Chapter updated successfully', {
-                    title: 'Success',
-                    variant: 'success',
-                    solid: true
-                });
+                this.showToast("Chapter updated successfully", "Success", "success");
             } catch (error) {
                 this.error = 'Failed to update chapter';
                 console.error(error);
+                this.showToast("Failed to update chapter", "Error", "danger");
             } finally {
                 this.loading = false;
             }
@@ -163,14 +197,11 @@ export default {
                 });
                 this.showDeleteModal = false;
                 this.fetchChapters();
-                this.$bvToast.toast('Chapter deleted successfully', {
-                    title: 'Success',
-                    variant: 'success',
-                    solid: true
-                });
+                this.showToast("Chapter deleted successfully", "Success", "success");
             } catch (error) {
                 this.error = 'Failed to delete chapter';
                 console.error(error);
+                this.showToast("Failed to delete chapter", "Error", "danger");
             } finally {
                 this.loading = false;
             }
