@@ -1,6 +1,6 @@
 import csv
 from io import StringIO
-from flask import jsonify, request
+from flask import jsonify, request, Response
 from flask_restful import Api, Resource, fields, marshal_with
 from flask_security import auth_required, current_user, roles_required
 from backend.models import *
@@ -581,8 +581,301 @@ class AdminDashboardAPI(Resource):
             'recent_quizzes': recent_quizzes,
             'recent_attempts': recent_attempts
         }
+class UserListAPI(Resource):
+    @marshal_with(user_list_fields)
+    @auth_required('token')
+    @roles_required('admin')
+    def get(self):
+        users = User.query.all()
+        # Convert User objects to dictionaries with the desired structure
+        user_list = []
+        for user in users:
+            user_dict = {
+                'id': user.id,
+                'username': user.email.split('@')[0],  # Use email prefix as username
+                'email': user.email,
+                'full_name': user.full_name,
+                'qualification': user.qualification,
+                'dob': str(user.dob) if user.dob else None,
+                'role': 'admin' if any(role.name == 'admin' for role in user.roles) else 'user',
+                'status': user.status or 'active',  # Default to 'active' if status is None
+                'created_at': user.created_at,
+                'last_activity': user.last_login_at
+            }
+            user_list.append(user_dict)
+        return {'users': user_list}
+    
+    @auth_required('token')
+    @roles_required('admin')
+    def post(self):
+        data = request.get_json()
+        
+        # Check if email already exists
+        if User.query.filter_by(email=data.get('email')).first():
+            return {"message": "Email already registered", "errors": {"email": "Email already exists"}}, 400
+        
+        # Get role
+        role_name = data.get('role', 'user')
+        role = Role.query.filter_by(name=role_name).first()
+        
+        # Create user
+        user = user_datastore.create_user(
+            email=data.get('email'),
+            password=data.get('password'),
+            full_name=data.get('full_name'),
+            qualification=data.get('qualification'),
+            dob=data.get('dob'),
+            status=data.get('status', 'active'),
+            roles=[role]
+        )
+        
+        # Add subject interests if provided
+        if data.get('subject_interests'):
+            # This could be implemented with a many-to-many relationship
+            user.subject_interests = data.get('subject_interests')
+            
+        db.session.commit()
+        
+        return {
+            "message": "User created successfully",
+            "user": {
+                'id': user.id,
+                'username': user.email.split('@')[0],
+                'email': user.email,
+                'full_name': user.full_name,
+                'qualification': user.qualification,
+                'dob': str(user.dob) if user.dob else None,
+                'role': role_name,
+                'status': user.status,
+                'created_at': user.created_at.isoformat()
+            }
+        }, 201
 
-# Register resources
+class UserAPI(Resource):
+    @marshal_with(user_list_fields)
+    @auth_required('token')
+    @roles_required('admin')
+    def get(self, user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return {"message": "User not found"}, 404
+        
+        return {
+            'id': user.id,
+            'username': user.email.split('@')[0],
+            'email': user.email,
+            'full_name': user.full_name,
+            'qualification': user.qualification,
+            'dob': str(user.dob) if user.dob else None,
+            'role': 'admin' if any(role.name == 'admin' for role in user.roles) else 'user',
+            'status': user.status or 'active',
+            'created_at': user.created_at,
+            'last_activity': user.last_login_at
+        }
+    
+    @auth_required('token')
+    @roles_required('admin')
+    def put(self, user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return {"message": "User not found"}, 404
+        
+        data = request.get_json()
+        
+        # Check if trying to update email and it already exists
+        if data.get('email') and data.get('email') != user.email:
+            if User.query.filter_by(email=data.get('email')).first():
+                return {"message": "Email already registered", "errors": {"email": "Email already exists"}}, 400
+            user.email = data.get('email')
+        
+        # Update user fields
+        if data.get('full_name'):
+            user.full_name = data.get('full_name')
+        
+        if data.get('qualification'):
+            user.qualification = data.get('qualification')
+        
+        if data.get('dob'):
+            user.dob = data.get('dob')
+        
+        if data.get('status'):
+            user.status = data.get('status')
+        
+        # Update role if changed
+        if data.get('role'):
+            # Remove all existing roles
+            for role in user.roles:
+                user_datastore.remove_role_from_user(user, role)
+            
+            # Add new role
+            role = Role.query.filter_by(name=data.get('role')).first()
+            user_datastore.add_role_to_user(user, role)
+        
+        # Update subject interests if provided
+        if 'subject_interests' in data:
+            user.subject_interests = data.get('subject_interests')
+        
+        db.session.commit()
+        
+        return {
+            "message": "User updated successfully",
+            "user": {
+                'id': user.id,
+                'username': user.email.split('@')[0],
+                'email': user.email,
+                'full_name': user.full_name,
+                'qualification': user.qualification,
+                'dob': str(user.dob) if user.dob else None,
+                'role': data.get('role') or ('admin' if any(role.name == 'admin' for role in user.roles) else 'user'),
+                'status': user.status,
+                'created_at': user.created_at.isoformat()
+            }
+        }
+    
+    @auth_required('token')
+    @roles_required('admin')
+    def delete(self, user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return {"message": "User not found"}, 404
+        
+        # Check if trying to delete the last admin
+        if any(role.name == 'admin' for role in user.roles):
+            admin_count = 0
+            for u in User.query.all():
+                if any(role.name == 'admin' for role in u.roles):
+                    admin_count += 1
+            
+            if admin_count <= 1:
+                return {"message": "Cannot delete the only admin user"}, 400
+        
+        db.session.delete(user)
+        db.session.commit()
+        
+        return {"message": "User deleted successfully"}
+
+class UserStatsAPI(Resource):
+    @auth_required('token')
+    @roles_required('admin')
+    def get(self, user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return {"message": "User not found"}, 404
+        
+        # Get user's quiz attempts
+        attempts = UserQuizAttempt.query.filter_by(user_id=user_id).all()
+        
+        # Calculate statistics
+        quizzes_taken = len(attempts)
+        scores = [attempt.score for attempt in attempts if attempt.score is not None]
+        
+        average_score = sum(scores) / len(scores) if scores else None
+        best_score = max(scores) if scores else None
+        
+        # Get recent attempts
+        recent_attempts = []
+        sorted_attempts = sorted(attempts, key=lambda x: x.completed_at or datetime.min, reverse=True)
+        
+        for attempt in sorted_attempts[:5]:  # Get 5 most recent attempts
+            if attempt.completed_at:  # Only include completed attempts
+                quiz = Quiz.query.get(attempt.quiz_id)
+                if quiz:
+                    chapter = Chapter.query.get(quiz.chapter_id) if quiz.chapter_id else None
+                    subject = Subject.query.get(chapter.subject_id) if chapter else None
+                    
+                    recent_attempts.append({
+                        'id': attempt.id,
+                        'quiz_id': quiz.id,
+                        'quiz_title': quiz.title,
+                        'subject_name': subject.name if subject else "Unknown",
+                        'score': attempt.score,
+                        'completed_at': attempt.completed_at.isoformat()
+                    })
+        
+        return {
+            'quizzes_taken': quizzes_taken,
+            'average_score': average_score,
+            'best_score': best_score,
+            'recent_attempts': recent_attempts
+        }
+
+class UserStatusAPI(Resource):
+    @auth_required('token')
+    @roles_required('admin')
+    def patch(self, user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return {"message": "User not found"}, 404
+        
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if not new_status:
+            return {"message": "Status is required"}, 400
+        
+        user.status = new_status
+        db.session.commit()
+        
+        return {"message": "User status updated successfully"}
+
+class UserExportAPI(Resource):
+    @auth_required('token')
+    @roles_required('admin')
+    def get(self):
+        users = User.query.all()
+        
+        # Create CSV
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            'ID', 'Username', 'Email', 'Full Name', 'Role', 'Status', 
+            'Qualification', 'Date of Birth', 'Registration Date', 
+            'Last Login', 'Quizzes Taken', 'Average Score'
+        ])
+        
+        # Write user data
+        for user in users:
+            # Get role
+            role = 'admin' if any(role.name == 'admin' for role in user.roles) else 'user'
+            
+            # Get quiz statistics
+            attempts = UserQuizAttempt.query.filter_by(user_id=user.id).all()
+            quizzes_taken = len(attempts)
+            scores = [attempt.score for attempt in attempts if attempt.score is not None]
+            average_score = sum(scores) / len(scores) if scores else 0
+            
+            writer.writerow([
+                user.id,
+                user.email.split('@')[0],
+                user.email,
+                user.full_name or '',
+                role,
+                user.status or 'active',
+                user.qualification or '',
+                user.dob or '',
+                user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '',
+                user.last_login_at.strftime('%Y-%m-%d %H:%M:%S') if user.last_login_at else '',
+                quizzes_taken,
+                f"{average_score:.1f}%" if average_score else '0.0%'
+            ])
+        
+        # Create response
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=users_export.csv"}
+        )
+
+# Register the new resources
+api.add_resource(UserListAPI, '/admin/users')
+api.add_resource(UserAPI, '/admin/users/<int:user_id>')
+api.add_resource(UserStatsAPI, '/admin/users/<int:user_id>/stats')
+api.add_resource(UserStatusAPI, '/admin/users/<int:user_id>/status')
+api.add_resource(UserExportAPI, '/admin/users/export')
+
 api.add_resource(SubjectAPI, '/subjects/<int:subject_id>')
 api.add_resource(SubjectListAPI, '/subjects')
 api.add_resource(ChapterAPI, '/chapters/<int:chapter_id>')
