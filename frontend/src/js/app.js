@@ -10,6 +10,7 @@ import QuizManagement from './components/QuizManagement.js';
 import QuestionManagement from './components/QuestionManagement.js';
 import AllChaptersManagement from './components/AllChaptersManagement.js';
 import AllQuizzesManagement from './components/AllQuizzesManagement.js';
+import UserManagement from './components/UserManagement.js';
 // import { createRouter } from 'vue-router';
 const routes = [
     { path: '/', redirect: '/login' },
@@ -57,6 +58,11 @@ const routes = [
       component: QuestionManagement,
       props: true,
       meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+        path: '/admin/users',
+        component: UserManagement,
+        meta: { requiresAuth: true, requiresAdmin: true }
     },
     { 
         path: '/user', 
