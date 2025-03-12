@@ -134,8 +134,9 @@ export default {
                         'Authentication-Token': localStorage.getItem('token')
                     }
                 });
+                console.log('API response:', response.data);
                 
-                this.users = response.data.users.map(user => ({
+                this.users = response.data.map(user => ({
                     ...user,
                     status: user.status || 'active' // Default status if not provided
                 }));

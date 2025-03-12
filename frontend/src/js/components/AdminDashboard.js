@@ -29,7 +29,7 @@ export default {
                 });
                 
                 // Log the full response to debug
-                console.log('Dashboard API response:', response.data);
+                // console.log('Dashboard API response:', response.data);
                 
                 // Store the full response
                 this.dashboardData = response.data;
