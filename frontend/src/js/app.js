@@ -8,6 +8,8 @@ import SubjectManagement from './components/SubjectManagement.js';
 import ChapterManagement from './components/ChapterManagement.js';
 import QuizManagement from './components/QuizManagement.js';
 import QuestionManagement from './components/QuestionManagement.js';
+import AllChaptersManagement from './components/AllChaptersManagement.js';
+import AllQuizzesManagement from './components/AllQuizzesManagement.js';
 // import { createRouter } from 'vue-router';
 const routes = [
     { path: '/', redirect: '/login' },
@@ -31,6 +33,19 @@ const routes = [
       props: true,
       meta: { requiresAuth: true, requiresAdmin: true }
     },
+    {
+        path: '/admin/quizzes',
+        component: AllQuizzesManagement,
+        meta: {
+            requiresAuth: true,
+            role: 'admin'
+        }
+    },
+    {
+        path: '/admin/chapters',
+        component: AllChaptersManagement,
+        meta: { requiresAuth: true, requiresAdmin: true }
+      },
     {
       path: '/admin/chapters/:chapterId/quizzes',
       component: QuizManagement,
