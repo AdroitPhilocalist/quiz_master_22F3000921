@@ -1,9 +1,8 @@
 import csv
 from io import StringIO
-from flask import jsonify, request, Response
-from flask_security import user_datastore
+from flask import jsonify, request, Response, current_app
 from flask_restful import Api, Resource, fields, marshal_with
-from flask_security import auth_required, current_user, roles_required
+from flask_security import auth_required, current_user, roles_required, hash_password
 from backend.models import *
 from datetime import datetime
 api = Api(prefix='/api')
@@ -588,23 +587,25 @@ class UserListAPI(Resource):
     @roles_required('admin')
     def get(self):
         users = User.query.all()
-        # Convert User objects to dictionaries with the desired structure
         user_list = []
         for user in users:
+            # Determine role
+            role = 'admin' if any(role.name == 'admin' for role in user.roles) else 'user'
+            
             user_dict = {
                 'id': user.id,
                 'username': user.email.split('@')[0],  # Use email prefix as username
                 'email': user.email,
                 'full_name': user.full_name,
                 'qualification': user.qualification,
-                'dob': str(user.dob) if user.dob else None,
-                'role': 'admin' if any(role.name == 'admin' for role in user.roles) else 'user',
-                'status': user.status or 'active',  # Default to 'active' if status is None
-                'created_at': user.created_at,
-                'last_activity': user.last_login_at
+                'dob': str(user.dob) if hasattr(user, 'dob') and user.dob else None,
+                'role': role,
+                'status': user.status if hasattr(user, 'status') else 'active',
+                'created_at': user.created_at if hasattr(user, 'created_at') else datetime.now(),
+                'last_activity': user.last_login_at if hasattr(user, 'last_login_at') else None
             }
             user_list.append(user_dict)
-        return {'users': user_list}
+        return user_list
     
     @auth_required('token')
     @roles_required('admin')
@@ -620,19 +621,22 @@ class UserListAPI(Resource):
         role = Role.query.filter_by(name=role_name).first()
         
         # Create user
-        user = user_datastore.create_user(
+        datastore = current_app.security.datastore
+        user = datastore.create_user(
             email=data.get('email'),
-            password=data.get('password'),
+            password=hash_password(data.get('password')),
             full_name=data.get('full_name'),
             qualification=data.get('qualification'),
             dob=data.get('dob'),
-            status=data.get('status', 'active'),
             roles=[role]
         )
         
+        # Add status if model supports it
+        if hasattr(user, 'status'):
+            user.status = data.get('status', 'active')
+        
         # Add subject interests if provided
-        if data.get('subject_interests'):
-            # This could be implemented with a many-to-many relationship
+        if data.get('subject_interests') and hasattr(user, 'subject_interests'):
             user.subject_interests = data.get('subject_interests')
             
         db.session.commit()
@@ -645,15 +649,14 @@ class UserListAPI(Resource):
                 'email': user.email,
                 'full_name': user.full_name,
                 'qualification': user.qualification,
-                'dob': str(user.dob) if user.dob else None,
+                'dob': str(user.dob) if hasattr(user, 'dob') and user.dob else None,
                 'role': role_name,
-                'status': user.status,
-                'created_at': user.created_at.isoformat()
+                'status': user.status if hasattr(user, 'status') else 'active',
+                'created_at': user.created_at.isoformat() if hasattr(user, 'created_at') else datetime.now().isoformat()
             }
         }, 201
 
 class UserAPI(Resource):
-    @marshal_with(user_list_fields)
     @auth_required('token')
     @roles_required('admin')
     def get(self, user_id):
@@ -661,17 +664,19 @@ class UserAPI(Resource):
         if not user:
             return {"message": "User not found"}, 404
         
+        role = 'admin' if any(role.name == 'admin' for role in user.roles) else 'user'
+        
         return {
             'id': user.id,
             'username': user.email.split('@')[0],
             'email': user.email,
             'full_name': user.full_name,
             'qualification': user.qualification,
-            'dob': str(user.dob) if user.dob else None,
-            'role': 'admin' if any(role.name == 'admin' for role in user.roles) else 'user',
-            'status': user.status or 'active',
-            'created_at': user.created_at,
-            'last_activity': user.last_login_at
+            'dob': str(user.dob) if hasattr(user, 'dob') and user.dob else None,
+            'role': role,
+            'status': user.status if hasattr(user, 'status') else 'active',
+            'created_at': user.created_at if hasattr(user, 'created_at') else datetime.now(),
+            'last_activity': user.last_login_at if hasattr(user, 'last_login_at') else None
         }
     
     @auth_required('token')
@@ -682,6 +687,7 @@ class UserAPI(Resource):
             return {"message": "User not found"}, 404
         
         data = request.get_json()
+        datastore = current_app.security.datastore
         
         # Check if trying to update email and it already exists
         if data.get('email') and data.get('email') != user.email:
@@ -696,42 +702,30 @@ class UserAPI(Resource):
         if data.get('qualification'):
             user.qualification = data.get('qualification')
         
-        if data.get('dob'):
+        if data.get('dob') and hasattr(user, 'dob'):
             user.dob = data.get('dob')
         
-        if data.get('status'):
+        if data.get('status') and hasattr(user, 'status'):
             user.status = data.get('status')
         
         # Update role if changed
         if data.get('role'):
-            # Remove all existing roles
-            for role in user.roles:
-                user_datastore.remove_role_from_user(user, role)
-            
-            # Add new role
-            role = Role.query.filter_by(name=data.get('role')).first()
-            user_datastore.add_role_to_user(user, role)
+            current_role = 'admin' if any(role.name == 'admin' for role in user.roles) else 'user'
+            if data.get('role') != current_role:
+                # Remove all existing roles
+                for role in user.roles:
+                    datastore.remove_role_from_user(user, role.name)
+                
+                # Add new role
+                datastore.add_role_to_user(user, data.get('role'))
         
         # Update subject interests if provided
-        if 'subject_interests' in data:
+        if 'subject_interests' in data and hasattr(user, 'subject_interests'):
             user.subject_interests = data.get('subject_interests')
         
         db.session.commit()
         
-        return {
-            "message": "User updated successfully",
-            "user": {
-                'id': user.id,
-                'username': user.email.split('@')[0],
-                'email': user.email,
-                'full_name': user.full_name,
-                'qualification': user.qualification,
-                'dob': str(user.dob) if user.dob else None,
-                'role': data.get('role') or ('admin' if any(role.name == 'admin' for role in user.roles) else 'user'),
-                'status': user.status,
-                'created_at': user.created_at.isoformat()
-            }
-        }
+        return {"message": "User updated successfully"}
     
     @auth_required('token')
     @roles_required('admin')
@@ -764,7 +758,7 @@ class UserStatsAPI(Resource):
             return {"message": "User not found"}, 404
         
         # Get user's quiz attempts
-        attempts = UserQuizAttempt.query.filter_by(user_id=user_id).all()
+        attempts = UserQuizAttempt.query.filter_by(user_id=user_id).all() if 'UserQuizAttempt' in globals() else []
         
         # Calculate statistics
         quizzes_taken = len(attempts)
@@ -779,10 +773,10 @@ class UserStatsAPI(Resource):
         
         for attempt in sorted_attempts[:5]:  # Get 5 most recent attempts
             if attempt.completed_at:  # Only include completed attempts
-                quiz = Quiz.query.get(attempt.quiz_id)
+                quiz = Quiz.query.get(attempt.quiz_id) if 'Quiz' in globals() else None
                 if quiz:
-                    chapter = Chapter.query.get(quiz.chapter_id) if quiz.chapter_id else None
-                    subject = Subject.query.get(chapter.subject_id) if chapter else None
+                    chapter = Chapter.query.get(quiz.chapter_id) if 'Chapter' in globals() and quiz.chapter_id else None
+                    subject = Subject.query.get(chapter.subject_id) if 'Subject' in globals() and chapter and chapter.subject_id else None
                     
                     recent_attempts.append({
                         'id': attempt.id,
@@ -814,10 +808,12 @@ class UserStatusAPI(Resource):
         if not new_status:
             return {"message": "Status is required"}, 400
         
-        user.status = new_status
-        db.session.commit()
-        
-        return {"message": "User status updated successfully"}
+        if hasattr(user, 'status'):
+            user.status = new_status
+            db.session.commit()
+            return {"message": "User status updated successfully"}
+        else:
+            return {"message": "User model does not have a status field"}, 400
 
 class UserExportAPI(Resource):
     @auth_required('token')
@@ -833,7 +829,7 @@ class UserExportAPI(Resource):
         writer.writerow([
             'ID', 'Username', 'Email', 'Full Name', 'Role', 'Status', 
             'Qualification', 'Date of Birth', 'Registration Date', 
-            'Last Login', 'Quizzes Taken', 'Average Score'
+            'Last Activity', 'Quizzes Taken', 'Average Score'
         ])
         
         # Write user data
@@ -842,7 +838,7 @@ class UserExportAPI(Resource):
             role = 'admin' if any(role.name == 'admin' for role in user.roles) else 'user'
             
             # Get quiz statistics
-            attempts = UserQuizAttempt.query.filter_by(user_id=user.id).all()
+            attempts = UserQuizAttempt.query.filter_by(user_id=user.id).all() if 'UserQuizAttempt' in globals() else []
             quizzes_taken = len(attempts)
             scores = [attempt.score for attempt in attempts if attempt.score is not None]
             average_score = sum(scores) / len(scores) if scores else 0
@@ -853,11 +849,11 @@ class UserExportAPI(Resource):
                 user.email,
                 user.full_name or '',
                 role,
-                user.status or 'active',
+                user.status if hasattr(user, 'status') else 'active',
                 user.qualification or '',
-                user.dob or '',
-                user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '',
-                user.last_login_at.strftime('%Y-%m-%d %H:%M:%S') if user.last_login_at else '',
+                user.dob if hasattr(user, 'dob') else '',
+                user.created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(user, 'created_at') and user.created_at else '',
+                user.last_login_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(user, 'last_login_at') and user.last_login_at else '',
                 quizzes_taken,
                 f"{average_score:.1f}%" if average_score else '0.0%'
             ])
@@ -876,6 +872,7 @@ api.add_resource(UserAPI, '/admin/users/<int:user_id>')
 api.add_resource(UserStatsAPI, '/admin/users/<int:user_id>/stats')
 api.add_resource(UserStatusAPI, '/admin/users/<int:user_id>/status')
 api.add_resource(UserExportAPI, '/admin/users/export')
+
 
 api.add_resource(SubjectAPI, '/subjects/<int:subject_id>')
 api.add_resource(SubjectListAPI, '/subjects')
