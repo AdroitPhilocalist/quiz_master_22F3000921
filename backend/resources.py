@@ -76,7 +76,25 @@ attempt_fields = {
     'completed_at': fields.DateTime,
     'started_at': fields.DateTime
 }
+user_list_fields = {
+    'id': fields.Integer,
+    'username': fields.String,
+    'email': fields.String,
+    'full_name': fields.String,
+    'qualification': fields.String,
+    'dob': fields.String,
+    'role': fields.String,
+    'status': fields.String,
+    'created_at': fields.DateTime,
+    'last_activity': fields.DateTime
+}
 
+user_stats_fields = {
+    'quizzes_taken': fields.Integer,
+    'average_score': fields.Float,
+    'best_score': fields.Float,
+    'recent_attempts': fields.List(fields.Raw)
+}
 
 # Subject Resources
 class SubjectAPI(Resource):
