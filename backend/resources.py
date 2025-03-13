@@ -865,6 +865,354 @@ class UserExportAPI(Resource):
             mimetype="text/csv",
             headers={"Content-disposition": "attachment; filename=users_export.csv"}
         )
+class UserDashboardAPI(Resource):
+    @auth_required('token')
+    def get(self):
+        user_id = current_user.id
+        
+        # Get user's quiz attempts
+        attempts = UserQuizAttempt.query.filter_by(user_id=user_id).all()
+        
+        # Get available quizzes (published ones)
+        available_quizzes = Quiz.query.filter_by(is_published=True).all()
+        
+        # Get subjects with chapters and quizzes
+        subjects = Subject.query.all()
+        subject_data = []
+        
+        for subject in subjects:
+            chapters = Chapter.query.filter_by(subject_id=subject.id).all()
+            chapter_data = []
+            
+            for chapter in chapters:
+                quizzes = Quiz.query.filter_by(chapter_id=chapter.id, is_published=True).all()
+                if quizzes:  # Only include chapters with published quizzes
+                    chapter_data.append({
+                        'id': chapter.id,
+                        'name': chapter.name,
+                        'quiz_count': len(quizzes)
+                    })
+            
+            if chapter_data:  # Only include subjects with chapters that have quizzes
+                subject_data.append({
+                    'id': subject.id,
+                    'name': subject.name,
+                    'chapters': chapter_data
+                })
+        
+        # Calculate statistics
+        completed_attempts = [a for a in attempts if a.completed_at is not None]
+        in_progress_attempts = [a for a in attempts if a.started_at is not None and a.completed_at is None]
+        
+        # Get recent attempts
+        recent_attempts = []
+        sorted_attempts = sorted(completed_attempts, key=lambda x: x.completed_at, reverse=True)
+        
+        for attempt in sorted_attempts[:5]:  # Get 5 most recent attempts
+            quiz = Quiz.query.get(attempt.quiz_id)
+            if quiz:
+                chapter = Chapter.query.get(quiz.chapter_id)
+                subject = Subject.query.get(chapter.subject_id) if chapter else None
+                
+                recent_attempts.append({
+                    'id': attempt.id,
+                    'quiz_id': quiz.id,
+                    'quiz_title': quiz.title,
+                    'subject_name': subject.name if subject else "Unknown",
+                    'chapter_name': chapter.name if chapter else "Unknown",
+                    'score': attempt.score,
+                    'completed_at': attempt.completed_at.isoformat() if attempt.completed_at else None
+                })
+        
+        # Get recommended quizzes (quizzes the user hasn't taken yet)
+        taken_quiz_ids = [a.quiz_id for a in attempts]
+        recommended_quizzes = []
+        
+        for quiz in available_quizzes:
+            if quiz.id not in taken_quiz_ids:
+                chapter = Chapter.query.get(quiz.chapter_id)
+                subject = Subject.query.get(chapter.subject_id) if chapter else None
+                
+                recommended_quizzes.append({
+                    'id': quiz.id,
+                    'title': quiz.title,
+                    'subject': subject.name if subject else "Unknown",
+                    'chapter': chapter.name if chapter else "Unknown",
+                    'time_limit': quiz.time_limit,
+                    'question_count': Question.query.filter_by(quiz_id=quiz.id).count()
+                })
+        
+        # Limit to 5 recommended quizzes
+        recommended_quizzes = recommended_quizzes[:5]
+        
+        # Get in-progress quizzes
+        in_progress_quizzes = []
+        for attempt in in_progress_attempts:
+            quiz = Quiz.query.get(attempt.quiz_id)
+            if quiz:
+                chapter = Chapter.query.get(quiz.chapter_id)
+                subject = Subject.query.get(chapter.subject_id) if chapter else None
+                
+                in_progress_quizzes.append({
+                    'id': quiz.id,
+                    'attempt_id': attempt.id,
+                    'title': quiz.title,
+                    'subject': subject.name if subject else "Unknown",
+                    'chapter': chapter.name if chapter else "Unknown",
+                    'started_at': attempt.started_at.isoformat() if attempt.started_at else None
+                })
+        
+        # Calculate overall statistics
+        total_quizzes_taken = len(completed_attempts)
+        scores = [a.score for a in completed_attempts if a.score is not None]
+        avg_score = sum(scores) / len(scores) if scores else 0
+        best_score = max(scores) if scores else 0
+        
+        return {
+            'user': {
+                'id': current_user.id,
+                'name': current_user.full_name,
+                'email': current_user.email
+            },
+            'stats': {
+                'total_quizzes_taken': total_quizzes_taken,
+                'quizzes_in_progress': len(in_progress_attempts),
+                'average_score': round(avg_score, 1),
+                'best_score': round(best_score, 1)
+            },
+            'recent_attempts': recent_attempts,
+            'in_progress_quizzes': in_progress_quizzes,
+            'recommended_quizzes': recommended_quizzes,
+            'subjects': subject_data
+        }
+
+# Add API endpoints for quiz taking
+class QuizStartAPI(Resource):
+    @auth_required('token')
+    def post(self, quiz_id):
+        quiz = Quiz.query.get(quiz_id)
+        if not quiz:
+            return {"message": "Quiz not found"}, 404
+        
+        if not quiz.is_published:
+            return {"message": "This quiz is not available"}, 403
+        
+        # Check if there's an existing incomplete attempt
+        existing_attempt = UserQuizAttempt.query.filter_by(
+            user_id=current_user.id, 
+            quiz_id=quiz_id, 
+            completed_at=None
+        ).first()
+        
+        if existing_attempt:
+            # Return the existing attempt
+            return {
+                "message": "Continuing existing attempt",
+                "attempt_id": existing_attempt.id,
+                "started_at": existing_attempt.started_at.isoformat()
+            }
+        
+        # Create a new attempt
+        new_attempt = UserQuizAttempt(
+            user_id=current_user.id,
+            quiz_id=quiz_id,
+            started_at=datetime.now()
+        )
+        db.session.add(new_attempt)
+        db.session.commit()
+        
+        return {
+            "message": "Quiz attempt started",
+            "attempt_id": new_attempt.id,
+            "started_at": new_attempt.started_at.isoformat()
+        }
+
+class QuizDetailAPI(Resource):
+    @auth_required('token')
+    def get(self, quiz_id):
+        quiz = Quiz.query.get(quiz_id)
+        if not quiz:
+            return {"message": "Quiz not found"}, 404
+        
+        if not quiz.is_published and not any(role.name == 'admin' for role in current_user.roles):
+            return {"message": "This quiz is not available"}, 403
+        
+        # Get chapter and subject info
+        chapter = Chapter.query.get(quiz.chapter_id)
+        subject = Subject.query.get(chapter.subject_id) if chapter else None
+        
+        # Get questions
+        questions = Question.query.filter_by(quiz_id=quiz_id).all()
+        question_data = []
+        
+        for question in questions:
+            options = Option.query.filter_by(question_id=question.id).all()
+            
+            # For users, don't include which option is correct
+            if not any(role.name == 'admin' for role in current_user.roles):
+                option_data = [{'id': o.id, 'text': o.text} for o in options]
+            else:
+                option_data = [{'id': o.id, 'text': o.text, 'is_correct': o.is_correct} for o in options]
+            
+            question_data.append({
+                'id': question.id,
+                'text': question.text,
+                'options': option_data
+            })
+        
+        return {
+            'id': quiz.id,
+            'title': quiz.title,
+            'description': quiz.description,
+            'time_limit': quiz.time_limit,
+            'subject': subject.name if subject else None,
+            'chapter': chapter.name if chapter else None,
+            'questions': question_data,
+            'question_count': len(question_data)
+        }
+
+class QuizSubmitAPI(Resource):
+    @auth_required('token')
+    def post(self, attempt_id):
+        attempt = UserQuizAttempt.query.get(attempt_id)
+        if not attempt:
+            return {"message": "Attempt not found"}, 404
+        
+        if attempt.user_id != current_user.id:
+            return {"message": "Unauthorized access"}, 403
+        
+        if attempt.completed_at:
+            return {"message": "This attempt has already been completed"}, 400
+        
+        data = request.get_json()
+        answers = data.get('answers', {})
+        
+        # Get the quiz
+        quiz = Quiz.query.get(attempt.quiz_id)
+        if not quiz:
+            return {"message": "Quiz not found"}, 404
+        
+        # Get all questions for this quiz
+        questions = Question.query.filter_by(quiz_id=quiz.id).all()
+        
+        # Calculate score
+        correct_count = 0
+        total_questions = len(questions)
+        
+        for question in questions:
+            # Get the selected answer for this question
+            selected_option_id = answers.get(str(question.id))
+            
+            if selected_option_id:
+                # Check if the selected option is correct
+                selected_option = Option.query.get(selected_option_id)
+                if selected_option and selected_option.question_id == question.id and selected_option.is_correct:
+                    correct_count += 1
+            
+            # Save the user's answer
+            if selected_option_id:
+                user_answer = UserAnswer(
+                    attempt_id=attempt.id,
+                    question_id=question.id,
+                    selected_option_id=selected_option_id
+                )
+                db.session.add(user_answer)
+        
+        # Calculate percentage score
+        score = (correct_count / total_questions * 100) if total_questions > 0 else 0
+        
+        # Update the attempt
+        attempt.score = score
+        attempt.completed_at = datetime.now()
+        db.session.commit()
+        
+        return {
+            "message": "Quiz submitted successfully",
+            "attempt_id": attempt.id,
+            "score": score,
+            "correct_count": correct_count,
+            "total_questions": total_questions
+        }
+
+class AttemptDetailAPI(Resource):
+    @auth_required('token')
+    def get(self, attempt_id):
+        attempt = UserQuizAttempt.query.get(attempt_id)
+        if not attempt:
+            return {"message": "Attempt not found"}, 404
+        
+        # Check if the user is authorized to view this attempt
+        if attempt.user_id != current_user.id and not any(role.name == 'admin' for role in current_user.roles):
+            return {"message": "Unauthorized access"}, 403
+        
+        # Get quiz details
+        quiz = Quiz.query.get(attempt.quiz_id)
+        if not quiz:
+            return {"message": "Quiz not found"}, 404
+        
+        chapter = Chapter.query.get(quiz.chapter_id)
+        subject = Subject.query.get(chapter.subject_id) if chapter else None
+        
+        return {
+            'id': attempt.id,
+            'quiz_id': quiz.id,
+            'quiz_title': quiz.title,
+            'subject': subject.name if subject else None,
+            'chapter': chapter.name if chapter else None,
+            'score': attempt.score,
+            'started_at': attempt.started_at.isoformat() if attempt.started_at else None,
+            'completed_at': attempt.completed_at.isoformat() if attempt.completed_at else None,
+            'time_taken': (attempt.completed_at - attempt.started_at).total_seconds() if attempt.completed_at and attempt.started_at else None
+        }
+
+class AttemptAnswersAPI(Resource):
+    @auth_required('token')
+    def get(self, attempt_id):
+        attempt = UserQuizAttempt.query.get(attempt_id)
+        if not attempt:
+            return {"message": "Attempt not found"}, 404
+        
+        # Check if the user is authorized to view this attempt
+        if attempt.user_id != current_user.id and not any(role.name == 'admin' for role in current_user.roles):
+            return {"message": "Unauthorized access"}, 403
+        
+        # Get quiz details
+        quiz = Quiz.query.get(attempt.quiz_id)
+        if not quiz:
+            return {"message": "Quiz not found"}, 404
+        
+        # Get all questions for this quiz
+        questions = Question.query.filter_by(quiz_id=quiz.id).all()
+        
+        # Get user's answers
+        user_answers = UserAnswer.query.filter_by(attempt_id=attempt_id).all()
+        user_answer_dict = {answer.question_id: answer.selected_option_id for answer in user_answers}
+        
+        question_data = []
+        for question in questions:
+            options = Option.query.filter_by(question_id=question.id).all()
+            correct_option = next((o for o in options if o.is_correct), None)
+            
+            selected_option_id = user_answer_dict.get(question.id)
+            is_correct = selected_option_id == correct_option.id if correct_option and selected_option_id else False
+            
+            question_data.append({
+                'id': question.id,
+                'text': question.text,
+                'options': [{'id': o.id, 'text': o.text, 'is_correct': o.is_correct} for o in options],
+                'selected_option_id': selected_option_id,
+                'is_correct': is_correct
+            })
+        
+        return question_data
+
+# Register the new resources
+api.add_resource(UserDashboardAPI, '/user/dashboard')
+api.add_resource(QuizStartAPI, '/quizzes/<int:quiz_id>/start')
+api.add_resource(QuizDetailAPI, '/quizzes/<int:quiz_id>')
+api.add_resource(QuizSubmitAPI, '/attempts/<int:attempt_id>/submit')
+api.add_resource(AttemptDetailAPI, '/attempts/<int:attempt_id>')
+api.add_resource(AttemptAnswersAPI, '/attempts/<int:attempt_id>/answers')
 
 # Register the new resources
 api.add_resource(UserListAPI, '/admin/users')
