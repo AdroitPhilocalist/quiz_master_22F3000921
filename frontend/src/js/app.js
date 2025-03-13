@@ -3,6 +3,8 @@ import LoginComponent from './components/LoginComponent.js';
 import RegisterComponent from './components/RegisterComponent.js';
 import AdminDashboard from './components/AdminDashboard.js';
 import UserDashboard from './components/UserDashboard.js';
+import QuizTaking from './components/QuizTaking.js';
+import QuizResult from './components/QuizResult.js';
 import NotFound from './components/NotFound.js';
 import SubjectManagement from './components/SubjectManagement.js';
 import ChapterManagement from './components/ChapterManagement.js';
@@ -69,6 +71,8 @@ const routes = [
         component: UserDashboard,
         meta: { requiresAuth: true, role: 'user' }
     },
+    { path: '/quiz/:quizId', component: QuizTaking, props: true, meta: { requiresAuth: true } },
+    { path: '/quiz-result/:attemptId', component: QuizResult, props: true, meta: { requiresAuth: true } },
     { path: '*', component: NotFound }
   ]
 
