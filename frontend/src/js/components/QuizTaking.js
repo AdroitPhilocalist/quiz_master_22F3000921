@@ -313,4 +313,66 @@ export default {
                                                 'btn-success': isQuestionAnswered(question.id),
                                                 'btn-outline-secondary': !isQuestionAnswered(question.id),
                                                 'active': index === currentQuestionIndex
+                                                }"
+                                                @click="goToQuestion(index)">
+                                            {{ index + 1 }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Confirmation Modal -->
+            <div v-if="showConfirmSubmit" class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-warning text-white">
+                            <h5 class="modal-title">Submit Quiz</h5>
+                            <button type="button" class="btn-close" @click="cancelSubmit" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="text-center mb-4">
+                                <i class="fas fa-exclamation-triangle text-warning fa-3x mb-3"></i>
+                                <h4>Are you sure you want to submit?</h4>
+                            </div>
+                            
+                            <div class="alert alert-info">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Quiz Summary</strong>
+                                </div>
+                                <ul class="mb-0">
+                                    <li>Total Questions: {{ questions.length }}</li>
+                                    <li>Answered: {{ answeredQuestions }}</li>
+                                    <li>Unanswered: {{ unansweredQuestions }}</li>
+                                </ul>
+                            </div>
+                            
+                            <p v-if="unansweredQuestions > 0" class="text-danger">
+                                <i class="fas fa-exclamation-circle me-1"></i>
+                                You have {{ unansweredQuestions }} unanswered questions. Unanswered questions will be marked as incorrect.
+                            </p>
+                            
+                            <p class="mb-0">
+                                Once submitted, you cannot change your answers.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @click="cancelSubmit">
+                                <i class="fas fa-arrow-left me-1"></i> Return to Quiz
+                            </button>
+                            <button type="button" class="btn btn-primary" @click="submitQuiz" :disabled="loading">
+                                <span v-if="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                <i v-else class="fas fa-paper-plane me-1"></i> Submit Quiz
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `
+}
                                 
