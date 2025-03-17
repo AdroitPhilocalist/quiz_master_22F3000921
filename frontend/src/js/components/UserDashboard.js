@@ -1,86 +1,86 @@
 export default {
-    data() {
-        return {
-            userName: localStorage.getItem('full_name') || 'User',
-            loading: false,
-            dashboardData: null,
-            error: null,
-            stats: {
-                totalQuizzesTaken: 0,
-                quizzesInProgress: 0,
-                averageScore: 0,
-                bestScore: 0
-            },
-            recentAttempts: [],
-            inProgressQuizzes: [],
-            recommendedQuizzes: [],
-            subjects: []
-        }
+  data() {
+    return {
+      userName: localStorage.getItem("full_name") || "User",
+      loading: false,
+      dashboardData: null,
+      error: null,
+      stats: {
+        totalQuizzesTaken: 0,
+        quizzesInProgress: 0,
+        averageScore: 0,
+        bestScore: 0,
+      },
+      recentAttempts: [],
+      inProgressQuizzes: [],
+      recommendedQuizzes: [],
+      subjects: [],
+    };
+  },
+  created() {
+    this.fetchDashboardData();
+  },
+  methods: {
+    async fetchDashboardData() {
+      this.loading = true;
+      try {
+        const response = await axios.get("/api/user/dashboard", {
+          headers: {
+            "Authentication-Token": localStorage.getItem("token"),
+          },
+        });
+
+        this.dashboardData = response.data;
+        this.userName = response.data.user.name;
+        this.stats = response.data.stats;
+        this.recentAttempts = response.data.recent_attempts;
+        this.inProgressQuizzes = response.data.in_progress_quizzes;
+        this.recommendedQuizzes = response.data.recommended_quizzes;
+        this.subjects = response.data.subjects;
+      } catch (error) {
+        this.error = "Failed to load dashboard data";
+        console.error(error);
+      } finally {
+        this.loading = false;
+      }
     },
-    created() {
-        this.fetchDashboardData();
+
+    formatDate(dateString) {
+      if (!dateString) return "N/A";
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     },
-    methods: {
-        async fetchDashboardData() {
-            this.loading = true;
-            try {
-                const response = await axios.get('/api/user/dashboard', {
-                    headers: {
-                        'Authentication-Token': localStorage.getItem('token')
-                    }
-                });
-                
-                this.dashboardData = response.data;
-                this.userName = response.data.user.name;
-                this.stats = response.data.stats;
-                this.recentAttempts = response.data.recent_attempts;
-                this.inProgressQuizzes = response.data.in_progress_quizzes;
-                this.recommendedQuizzes = response.data.recommended_quizzes;
-                this.subjects = response.data.subjects;
-            } catch (error) {
-                this.error = 'Failed to load dashboard data';
-                console.error(error);
-            } finally {
-                this.loading = false;
-            }
-        },
-        
-        formatDate(dateString) {
-            if (!dateString) return 'N/A';
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        },
-        
-        startQuiz(quizId) {
-            this.$router.push(`/quiz/${quizId}`);
-        },
-        
-        continueQuiz(attemptId) {
-            this.$router.push(`/quiz-attempt/${attemptId}`);
-        },
-        
-        viewResult(attemptId) {
-            this.$router.push(`/quiz-result/${attemptId}`);
-        },
-        
-        browseSubject(subjectId) {
-            this.$router.push(`/subject/${subjectId}`);
-        },
-        
-        getScoreClass(score) {
-            if (score >= 90) return 'text-success';
-            if (score >= 70) return 'text-primary';
-            if (score >= 50) return 'text-warning';
-            return 'text-danger';
-        }
+
+    startQuiz(quizId) {
+      this.$router.push(`/quiz/${quizId}`);
     },
-    template: `
+
+    continueQuiz(attemptId) {
+      this.$router.push(`/quiz-attempt/${attemptId}`);
+    },
+
+    viewResult(attemptId) {
+      this.$router.push(`/quiz-result/${attemptId}`);
+    },
+
+    browseSubject(subjectId) {
+      this.$router.push(`/subject/${subjectId}`);
+    },
+
+    getScoreClass(score) {
+      if (score >= 90) return "text-success";
+      if (score >= 70) return "text-primary";
+      if (score >= 50) return "text-warning";
+      return "text-danger";
+    },
+  },
+  template: `
         <div class="container-fluid py-4">
             <div v-if="loading" class="text-center my-5">
                 <div class="spinner-border text-primary" role="status">
@@ -95,117 +95,223 @@ export default {
             
             <div v-else>
                 <!-- Welcome Section -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card bg-gradient-primary border-0 shadow-lg">
-                            <div class="card-body p-4">
-                                <div class="row align-items-center">
-                                    <div class="col-md-8">
-                                        <h2 class="text-white mb-0">Welcome back, {{ userName }}!</h2>
-                                        <p class="text-white-50 mb-0">Ready to challenge yourself with some quizzes today?</p>
-                                    </div>
-                                    <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                                        <button class="btn btn-light" @click="fetchDashboardData">
-                                            <i class="fas fa-sync-alt me-1"></i> Refresh
-                                        </button>
+                <!-- Welcome Section (Enhanced) -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 overflow-hidden position-relative">
+            <!-- Decorative background elements -->
+            <div class="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style="z-index: 0">
+                <div class="position-absolute" style="width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%); top: -150px; left: -50px;"></div>
+                <div class="position-absolute" style="width: 200px; height: 200px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%); bottom: -100px; right: 20%;"></div>
+                <div class="position-absolute rounded-circle" style="width: 40px; height: 40px; background-color: rgba(255,255,255,0.1); top: 20%; left: 10%;"></div>
+                <div class="position-absolute rounded-circle" style="width: 20px; height: 20px; background-color: rgba(255,255,255,0.1); top: 30%; right: 20%;"></div>
+                <div class="position-absolute rounded-circle" style="width: 15px; height: 15px; background-color: rgba(255,255,255,0.1); bottom: 20%; right: 30%;"></div>
+            </div>
+            
+            <!-- Main content -->
+            <div class="card-body p-0">
+                <div class="bg-gradient-primary p-4" style="background-image: linear-gradient(135deg, #000DFF 0%, #6B73FF 80%);">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center mb-3">
+                                <!-- User avatar/icon -->
+                                <div class="avatar-circle me-3 bg-white shadow-sm d-flex align-items-center justify-content-center" 
+                                     style="width: 60px; height: 60px; border-radius: 50%;">
+                                    <span style="font-size: 26px; color: #000DFF;">{{ userName.charAt(0).toUpperCase() }}</span>
+                                </div>
+                                <div>
+                                    <h2 class="text-white fw-bold mb-0">Welcome back, {{ userName }}!</h2>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-white text-primary me-2">
+                                            <i class="fas fa-bolt me-1"></i>{{ stats.totalQuizzesTaken }} Quizzes Completed
+                                        </span>
+                                        <span class="badge bg-white text-primary">
+                                            <i class="fas fa-star me-1"></i>Best: {{ stats.bestScore }}%
+                                        </span>
                                     </div>
                                 </div>
+                            </div>
+                            <p class="text-white mb-0 opacity-90 fw-light">Ready to challenge yourself with some quizzes today?</p>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Additional dashboard quick stats -->
+                <div class="bg-white px-4 py-3 border-top d-flex justify-content-between flex-wrap">
+                    <div class="py-1 me-3">
+                        <span class="text-muted small">Today's Goal</span>
+                        <div class="d-flex align-items-center">
+                            <div class="progress flex-grow-1 me-2" style="height: 6px; width: 100px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 40%"></div>
+                            </div>
+                            <span class="text-dark fw-bold">2/5</span>
+                        </div>
+                    </div>
+                    <div class="py-1 me-3">
+                        <span class="text-muted small">Study Streak</span>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-fire text-warning me-1"></i>
+                            <span class="text-dark fw-bold">3 Days</span>
+                        </div>
+                    </div>
+                    <div class="py-1">
+                        <span class="text-muted small">Next Quiz</span>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-calendar-alt text-primary me-1"></i>
+                            <span class="text-dark fw-bold">In Progress</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Stats Cards -->             
+<div class="row mb-4">
+    <!-- Quizzes Taken Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-0 h-100" style="border-radius: 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.07); overflow: hidden; transition: all 0.3s ease;" 
+             onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.12)';" 
+             onmouseout="this.style.transform=''; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.07)';">
+            <div style="width: 4px; height: 100%; background: linear-gradient(to bottom, #000DFF, #6B73FF); position: absolute; left: 0; top: 0;"></div>
+            <div class="card-body" style="padding: 1.25rem;">
+                <div class="row align-items-center">
+                    <div class="col-3">
+                        <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #000DFF, #6B73FF); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,13,255,0.2); transition: transform 0.3s ease;"
+                             onmouseover="this.style.transform='scale(1.1)';" 
+                             onmouseout="this.style.transform='';">
+                            <i class="fas fa-clipboard-check fa-lg text-white"></i>
+                        </div>
+                    </div>
+                    <div class="col-9">
+                        <div class="numbers">
+                            <p class="text-sm mb-0 text-uppercase fw-bold" style="letter-spacing: 1px; color: #555; font-size: 0.75rem;">Quizzes Taken</p>
+                            <h3 class="fw-bold mb-0" style="font-size: 1.75rem;">
+                                {{ stats.totalQuizzesTaken }}
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+                <div style="height: 4px; background-color: rgba(0,0,0,0.05); margin-top: 15px; border-radius: 4px; overflow: hidden;">
+                    <div style="width: 100%; height: 100%; background: linear-gradient(to right, #000DFF, #6B73FF);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- In Progress Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-0 h-100" style="border-radius: 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.07); overflow: hidden; transition: all 0.3s ease;"
+             onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.12)';" 
+             onmouseout="this.style.transform=''; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.07)';">
+            <div style="width: 4px; height: 100%; background: linear-gradient(to bottom, #0dcaf0, #36b9cc); position: absolute; left: 0; top: 0;"></div>
+            <div class="card-body" style="padding: 1.25rem;">
+                <div class="row align-items-center">
+                    <div class="col-3">
+                        <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #0dcaf0, #36b9cc); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(13,202,240,0.2); transition: transform 0.3s ease;"
+                             onmouseover="this.style.transform='scale(1.1)';" 
+                             onmouseout="this.style.transform='';">
+                            <i class="fas fa-hourglass-half fa-lg text-white"></i>
+                        </div>
+                    </div>
+                    <div class="col-9">
+                        <div class="numbers">
+                            <p class="text-sm mb-0 text-uppercase fw-bold" style="letter-spacing: 1px; color: #555; font-size: 0.75rem;">In Progress</p>
+                            <div class="d-flex align-items-center">
+                                <h3 class="fw-bold mb-0 me-2" style="font-size: 1.75rem;">
+                                    {{ stats.quizzesInProgress }}
+                                </h3>
+                                <span v-if="stats.quizzesInProgress > 0" class="badge" style="background-color: rgba(13, 202, 240, 0.1); color: #0dcaf0; font-size: 0.7rem; padding: 5px 8px; border-radius: 4px;">
+                                    ONGOING
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Stats Cards -->
-                <div class="row mb-4">
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col-3">
-                                        <div class="icon-shape bg-gradient-primary text-white rounded-circle shadow-sm">
-                                            <i class="fas fa-clipboard-check"></i>
-                                        </div>
-                                    </div>
-                                    <div class="col-9">
-                                        <div class="numbers">
-                                            <p class="text-sm mb-0 text-uppercase font-weight-bold">Quizzes Taken</p>
-                                            <h5 class="font-weight-bolder mb-0">
-                                                {{ stats.totalQuizzesTaken }}
-                                            </h5>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <div style="height: 4px; background-color: rgba(0,0,0,0.05); margin-top: 15px; border-radius: 4px; overflow: hidden;">
+                    <div style="width: 70%; height: 100%; background: linear-gradient(to right, #0dcaf0, #36b9cc);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Average Score Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-0 h-100" style="border-radius: 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.07); overflow: hidden; transition: all 0.3s ease;"
+             onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.12)';" 
+             onmouseout="this.style.transform=''; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.07)';">
+            <div style="width: 4px; height: 100%; background: linear-gradient(to bottom, #1cc88a, #0f9e67); position: absolute; left: 0; top: 0;"></div>
+            <div class="card-body" style="padding: 1.25rem;">
+                <div class="row align-items-center">
+                    <div class="col-3">
+                        <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #1cc88a, #0f9e67); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(28,200,138,0.2); transition: transform 0.3s ease;"
+                             onmouseover="this.style.transform='scale(1.1)';" 
+                             onmouseout="this.style.transform='';">
+                            <i class="fas fa-chart-line fa-lg text-white"></i>
                         </div>
                     </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col-3">
-                                        <div class="icon-shape bg-gradient-info text-white rounded-circle shadow-sm">
-                                            <i class="fas fa-hourglass-half"></i>
-                                        </div>
-                                    </div>
-                                    <div class="col-9">
-                                        <div class="numbers">
-                                            <p class="text-sm mb-0 text-uppercase font-weight-bold">In Progress</p>
-                                            <h5 class="font-weight-bolder mb-0">
-                                                {{ stats.quizzesInProgress }}
-                                            </h5>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col-3">
-                                        <div class="icon-shape bg-gradient-success text-white rounded-circle shadow-sm">
-                                            <i class="fas fa-chart-line"></i>
-                                        </div>
-                                    </div>
-                                    <div class="col-9">
-                                        <div class="numbers">
-                                            <p class="text-sm mb-0 text-uppercase font-weight-bold">Average Score</p>
-                                            <h5 class="font-weight-bolder mb-0">
-                                                {{ stats.averageScore }}%
-                                            </h5>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col-3">
-                                        <div class="icon-shape bg-gradient-warning text-white rounded-circle shadow-sm">
-                                            <i class="fas fa-trophy"></i>
-                                        </div>
-                                    </div>
-                                    <div class="col-9">
-                                        <div class="numbers">
-                                            <p class="text-sm mb-0 text-uppercase font-weight-bold">Best Score</p>
-                                            <h5 class="font-weight-bolder mb-0">
-                                                {{ stats.bestScore }}%
-                                            </h5>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div class="col-9">
+                        <div class="numbers">
+                            <p class="text-sm mb-0 text-uppercase fw-bold" style="letter-spacing: 1px; color: #555; font-size: 0.75rem;">Average Score</p>
+                            <div class="d-flex align-items-baseline">
+                                <h3 class="fw-bold mb-0" style="font-size: 1.75rem;">
+                                    {{ stats.averageScore }}
+                                </h3>
+                                <span style="font-size: 1rem; font-weight: 500; margin-left: 2px;">%</span>
+                                <i class="fas fa-arrow-up ms-2" style="color: #1cc88a; font-size: 0.875rem;" v-if="stats.averageScore > 50"></i>
+                                <i class="fas fa-arrow-down ms-2" style="color: #e74a3b; font-size: 0.875rem;" v-else></i>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+                <div style="height: 4px; background-color: rgba(0,0,0,0.05); margin-top: 15px; border-radius: 4px; overflow: hidden;">
+                    <div :style="'width: ' + stats.averageScore + '%; height: 100%; background: linear-gradient(to right, #1cc88a, #0f9e67);'"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Best Score Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-0 h-100" style="border-radius: 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.07); overflow: hidden; transition: all 0.3s ease;"
+             onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.12)';" 
+             onmouseout="this.style.transform=''; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.07)';">
+            <div style="width: 4px; height: 100%; background: linear-gradient(to bottom, #f6c23e, #dda20a); position: absolute; left: 0; top: 0;"></div>
+            <div class="card-body" style="padding: 1.25rem;">
+                <div class="row align-items-center">
+                    <div class="col-3">
+                        <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #f6c23e, #dda20a); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(246,194,62,0.2); transition: transform 0.3s ease;"
+                             onmouseover="this.style.transform='scale(1.1)';" 
+                             onmouseout="this.style.transform='';">
+                            <i class="fas fa-trophy fa-lg text-white"></i>
+                        </div>
+                    </div>
+                    <div class="col-9">
+                        <div class="numbers">
+                            <p class="text-sm mb-0 text-uppercase fw-bold" style="letter-spacing: 1px; color: #555; font-size: 0.75rem;">Best Score</p>
+                            <div class="d-flex align-items-baseline">
+                                <h3 class="fw-bold mb-0" style="font-size: 1.75rem;">
+                                    {{ stats.bestScore }}
+                                </h3>
+                                <span style="font-size: 1rem; font-weight: 500; margin-left: 2px;">%</span>
+                                <i class="fas fa-crown ms-2" style="color: #f6c23e; font-size: 0.875rem;" v-if="stats.bestScore >= 90"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Star rating -->
+                <div class="d-flex justify-content-between align-items-center mt-3" style="padding: 0 5px;">
+                    <i class="fas fa-star" :style="stats.bestScore >= 20 ? 'color: #f6c23e; opacity: 0.7;' : 'color: #dedede; opacity: 0.7;'"></i>
+                    <i class="fas fa-star" :style="stats.bestScore >= 40 ? 'color: #f6c23e; opacity: 0.8;' : 'color: #dedede; opacity: 0.7;'"></i>
+                    <i class="fas fa-star" :style="stats.bestScore >= 60 ? 'color: #f6c23e; opacity: 0.9;' : 'color: #dedede; opacity: 0.7;'"></i>
+                    <i class="fas fa-star" :style="stats.bestScore >= 80 ? 'color: #f6c23e; opacity: 0.95;' : 'color: #dedede; opacity: 0.7;'"></i>
+                    <i class="fas fa-star" :style="stats.bestScore >= 90 ? 'color: #f6c23e; opacity: 1;' : 'color: #dedede; opacity: 0.7;'"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>      
                 <!-- Main Content -->
                 <div class="row">
                     <!-- Left Column -->
@@ -217,7 +323,7 @@ export default {
                             </div>
                             <div class="card-body">
                                 <div v-if="inProgressQuizzes.length === 0" class="text-center py-4">
-                                    <img src="/static/img/empty-state.svg" alt="No quizzes in progress" class="img-fluid mb-3" style="max-height: 150px;">
+                                <i class="fas fa-hourglass-half fa-4x text-muted mb-3"></i>
                                     <h5>No quizzes in progress</h5>
                                     <p class="text-muted">Start a new quiz from the recommended section below.</p>
                                 </div>
@@ -262,7 +368,7 @@ export default {
                             </div>
                             <div class="card-body">
                                 <div v-if="recommendedQuizzes.length === 0" class="text-center py-4">
-                                    <img src="/static/img/completed.svg" alt="All caught up" class="img-fluid mb-3" style="max-height: 150px;">
+                                <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
                                     <h5>You've completed all available quizzes!</h5>
                                     <p class="text-muted">Check back later for new content.</p>
                                 </div>
@@ -300,7 +406,7 @@ export default {
                             </div>
                             <div class="card-body p-0">
                                 <div v-if="recentAttempts.length === 0" class="text-center py-4">
-                                    <img src="/static/img/no-data.svg" alt="No results yet" class="img-fluid mb-3" style="max-height: 150px;">
+                                <i class="fas fa-chart-bar fa-4x text-muted mb-3"></i>
                                     <h5>No quiz results yet</h5>
                                     <p class="text-muted">Complete a quiz to see your results here.</p>
                                 </div>
@@ -330,7 +436,7 @@ export default {
                             </div>
                             <div class="card-body p-0">
                                 <div v-if="subjects.length === 0" class="text-center py-4">
-                                    <img src="/static/img/empty-folder.svg" alt="No subjects" class="img-fluid mb-3" style="max-height: 150px;">
+                                <i class="fas fa-book fa-4x text-muted mb-3"></i>
                                     <h5>No subjects available</h5>
                                     <p class="text-muted">Check back later for new content.</p>
                                 </div>
@@ -354,5 +460,5 @@ export default {
                 </div>
             </div>
         </div>
-    `
-}
+    `,
+};
