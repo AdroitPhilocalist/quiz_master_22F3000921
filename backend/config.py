@@ -10,3 +10,4 @@ class LocalDevelopmentConfig(Config):
     SECRET_KEY='key'
     SECURITY_TOKEN_AUTHENTICATION_HEADER='Authentication-Token'
     WTF_CSRF_ENABLED=False
+    SECURITY_TOKEN_MAX_AGE=1800
