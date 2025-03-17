@@ -6,10 +6,10 @@ export default {
       dashboardData: null,
       error: null,
       stats: {
-        totalQuizzesTaken: 0,
-        quizzesInProgress: 0,
-        averageScore: 0,
-        bestScore: 0,
+        total_quizzes_taken: 0,
+        quizzes_in_progress: 0,
+        average_score: 0,
+        best_score: 0,
       },
       recentAttempts: [],
       inProgressQuizzes: [],
@@ -37,6 +37,8 @@ export default {
         this.inProgressQuizzes = response.data.in_progress_quizzes;
         this.recommendedQuizzes = response.data.recommended_quizzes;
         this.subjects = response.data.subjects;
+        console.log(this.stats);
+        
       } catch (error) {
         this.error = "Failed to load dashboard data";
         console.error(error);
@@ -79,9 +81,31 @@ export default {
       if (score >= 50) return "text-warning";
       return "text-danger";
     },
+    logout() {
+        // Remove all stored user data
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('userName');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('full_name');
+        
+        // Redirect to login page
+        this.$router.push('/login');
+      },
+      viewProfile() {
+        // You can implement this later or show a modal
+        alert('Profile view functionality will be implemented soon');
+      },
+      
+      // Add settings method (placeholder for now)
+      viewSettings() {
+        // You can implement this later or show a modal
+        alert('Settings functionality will be implemented soon');
+      }
   },
   template: `
         <div class="container-fluid py-4">
+        
             <div v-if="loading" class="text-center my-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
@@ -112,7 +136,7 @@ export default {
             <div class="card-body p-0">
                 <div class="bg-gradient-primary p-4" style="background-image: linear-gradient(135deg, #000DFF 0%, #6B73FF 80%);">
                     <div class="row align-items-center">
-                        <div class="col-md-8">
+                        <div class="col-md-12">
                             <div class="d-flex align-items-center mb-3">
                                 <!-- User avatar/icon -->
                                 <div class="avatar-circle me-3 bg-white shadow-sm d-flex align-items-center justify-content-center" 
@@ -123,16 +147,48 @@ export default {
                                     <h2 class="text-white fw-bold mb-0">Welcome back, {{ userName }}!</h2>
                                     <div class="d-flex align-items-center">
                                         <span class="badge bg-white text-primary me-2">
-                                            <i class="fas fa-bolt me-1"></i>{{ stats.totalQuizzesTaken }} Quizzes Completed
+                                            <i class="fas fa-bolt me-1"></i>{{ stats.total_quizzes_taken }} Quizzes Completed
                                         </span>
                                         <span class="badge bg-white text-primary">
-                                            <i class="fas fa-star me-1"></i>Best: {{ stats.bestScore }}%
+                                            <i class="fas fa-star me-1"></i>Best: {{ stats.best_score }}%
                                         </span>
                                     </div>
                                 </div>
+                                <button class="btn btn-link d-md-none rounded-circle">
+                    <i class="fa fa-bars"></i>
+                </button>
+                
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown no-arrow">
+                        <a class="nav-link dropdown-toggle text-white me-3" href="#" id="userDropdown" role="button"
+                            data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="me-2 d-none d-lg-inline">{{ userName }}</span>
+                            <i class="fas fa-user-circle fa-fw text-dark"></i>
+                        </a>
+                        
+                        <div class="dropdown-menu dropdown-menu-end shadow animated--grow-in"
+                            aria-labelledby="userDropdown">
+                            <a class="dropdown-item" href="#" @click.prevent="viewProfile">
+                                <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
+                                Profile
+                            </a>
+                            <a class="dropdown-item" href="#" @click.prevent="viewSettings">
+                                <i class="fas fa-cogs fa-sm fa-fw me-2 text-gray-400"></i>
+                                Settings
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="#" @click.prevent="logout">
+                                <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>
+                                Logout
+                            </a>
+                        </div>
+                    </li>
+                </ul>
                             </div>
                             <p class="text-white mb-0 opacity-90 fw-light">Ready to challenge yourself with some quizzes today?</p>
+                            
                         </div>
+                        
                         
                     </div>
                 </div>
@@ -188,7 +244,7 @@ export default {
                         <div class="numbers">
                             <p class="text-sm mb-0 text-uppercase fw-bold" style="letter-spacing: 1px; color: #555; font-size: 0.75rem;">Quizzes Taken</p>
                             <h3 class="fw-bold mb-0" style="font-size: 1.75rem;">
-                                {{ stats.totalQuizzesTaken }}
+                                {{ stats.total_quizzes_taken }}
                             </h3>
                         </div>
                     </div>
@@ -220,9 +276,9 @@ export default {
                             <p class="text-sm mb-0 text-uppercase fw-bold" style="letter-spacing: 1px; color: #555; font-size: 0.75rem;">In Progress</p>
                             <div class="d-flex align-items-center">
                                 <h3 class="fw-bold mb-0 me-2" style="font-size: 1.75rem;">
-                                    {{ stats.quizzesInProgress }}
+                                    {{ stats.quizzes_in_progress }}
                                 </h3>
-                                <span v-if="stats.quizzesInProgress > 0" class="badge" style="background-color: rgba(13, 202, 240, 0.1); color: #0dcaf0; font-size: 0.7rem; padding: 5px 8px; border-radius: 4px;">
+                                <span v-if="stats.quizzes_in_progress > 0" class="badge" style="background-color: rgba(13, 202, 240, 0.1); color: #0dcaf0; font-size: 0.7rem; padding: 5px 8px; border-radius: 4px;">
                                     ONGOING
                                 </span>
                             </div>
@@ -256,17 +312,17 @@ export default {
                             <p class="text-sm mb-0 text-uppercase fw-bold" style="letter-spacing: 1px; color: #555; font-size: 0.75rem;">Average Score</p>
                             <div class="d-flex align-items-baseline">
                                 <h3 class="fw-bold mb-0" style="font-size: 1.75rem;">
-                                    {{ stats.averageScore }}
+                                    {{ stats.average_score }}
                                 </h3>
                                 <span style="font-size: 1rem; font-weight: 500; margin-left: 2px;">%</span>
-                                <i class="fas fa-arrow-up ms-2" style="color: #1cc88a; font-size: 0.875rem;" v-if="stats.averageScore > 50"></i>
+                                <i class="fas fa-arrow-up ms-2" style="color: #1cc88a; font-size: 0.875rem;" v-if="stats.average_score > 50"></i>
                                 <i class="fas fa-arrow-down ms-2" style="color: #e74a3b; font-size: 0.875rem;" v-else></i>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div style="height: 4px; background-color: rgba(0,0,0,0.05); margin-top: 15px; border-radius: 4px; overflow: hidden;">
-                    <div :style="'width: ' + stats.averageScore + '%; height: 100%; background: linear-gradient(to right, #1cc88a, #0f9e67);'"></div>
+                    <div :style="'width: ' + stats.average_score + '%; height: 100%; background: linear-gradient(to right, #1cc88a, #0f9e67);'"></div>
                 </div>
             </div>
         </div>
@@ -292,21 +348,21 @@ export default {
                             <p class="text-sm mb-0 text-uppercase fw-bold" style="letter-spacing: 1px; color: #555; font-size: 0.75rem;">Best Score</p>
                             <div class="d-flex align-items-baseline">
                                 <h3 class="fw-bold mb-0" style="font-size: 1.75rem;">
-                                    {{ stats.bestScore }}
+                                    {{ stats.best_score }}
                                 </h3>
                                 <span style="font-size: 1rem; font-weight: 500; margin-left: 2px;">%</span>
-                                <i class="fas fa-crown ms-2" style="color: #f6c23e; font-size: 0.875rem;" v-if="stats.bestScore >= 90"></i>
+                                <i class="fas fa-crown ms-2" style="color: #f6c23e; font-size: 0.875rem;" v-if="stats.best_score >= 90"></i>
                             </div>
                         </div>
                     </div>
                 </div>
                 <!-- Star rating -->
                 <div class="d-flex justify-content-between align-items-center mt-3" style="padding: 0 5px;">
-                    <i class="fas fa-star" :style="stats.bestScore >= 20 ? 'color: #f6c23e; opacity: 0.7;' : 'color: #dedede; opacity: 0.7;'"></i>
-                    <i class="fas fa-star" :style="stats.bestScore >= 40 ? 'color: #f6c23e; opacity: 0.8;' : 'color: #dedede; opacity: 0.7;'"></i>
-                    <i class="fas fa-star" :style="stats.bestScore >= 60 ? 'color: #f6c23e; opacity: 0.9;' : 'color: #dedede; opacity: 0.7;'"></i>
-                    <i class="fas fa-star" :style="stats.bestScore >= 80 ? 'color: #f6c23e; opacity: 0.95;' : 'color: #dedede; opacity: 0.7;'"></i>
-                    <i class="fas fa-star" :style="stats.bestScore >= 90 ? 'color: #f6c23e; opacity: 1;' : 'color: #dedede; opacity: 0.7;'"></i>
+                    <i class="fas fa-star" :style="stats.best_score >= 20 ? 'color: #f6c23e; opacity: 0.7;' : 'color: #dedede; opacity: 0.7;'"></i>
+                    <i class="fas fa-star" :style="stats.best_score >= 40 ? 'color: #f6c23e; opacity: 0.8;' : 'color: #dedede; opacity: 0.7;'"></i>
+                    <i class="fas fa-star" :style="stats.best_score >= 60 ? 'color: #f6c23e; opacity: 0.9;' : 'color: #dedede; opacity: 0.7;'"></i>
+                    <i class="fas fa-star" :style="stats.best_score >= 80 ? 'color: #f6c23e; opacity: 0.95;' : 'color: #dedede; opacity: 0.7;'"></i>
+                    <i class="fas fa-star" :style="stats.best_score >= 90 ? 'color: #f6c23e; opacity: 1;' : 'color: #dedede; opacity: 0.7;'"></i>
                 </div>
             </div>
         </div>
