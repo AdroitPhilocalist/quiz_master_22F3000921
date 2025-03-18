@@ -44,11 +44,29 @@ export default {
     this.$once('hook:beforeDestroy', () => {
       document.head.removeChild(styleEl);
     });
+    
+    // Handle clicking outside of modals to close them
+    document.addEventListener('click', this.handleOutsideClick);
+  },
+  beforeDestroy() {
+    document.removeEventListener('click', this.handleOutsideClick);
   },
   created() {
     this.fetchSubjects();
   },
   methods: {
+    handleOutsideClick(event) {
+      // Only close modals when clicking on backdrop
+      if (this.showAddModal && event.target.classList.contains('modal')) {
+        this.closeAddModal();
+      }
+      if (this.showEditModal && event.target.classList.contains('modal')) {
+        this.closeEditModal();
+      }
+      if (this.showDeleteModal && event.target.classList.contains('modal')) {
+        this.closeDeleteModal();
+      }
+    },
     showToast(message, title = "Notification", variant = "success") {
       const toastEl = document.createElement("div");
       toastEl.className = `toast align-items-center text-white bg-${variant} border-0`;
@@ -109,14 +127,38 @@ export default {
     openAddModal() {
       this.newSubject = { name: "", description: "" };
       this.showAddModal = true;
+      // Focus the input field after the modal is shown
+      setTimeout(() => {
+        const nameInput = document.getElementById('subjectName');
+        if (nameInput) nameInput.focus();
+      }, 100);
     },
+    
+    closeAddModal() {
+      this.showAddModal = false;
+    },
+    
     openEditModal(subject) {
       this.editingSubject = { ...subject };
       this.showEditModal = true;
+      // Focus the input field after the modal is shown
+      setTimeout(() => {
+        const nameInput = document.getElementById('editSubjectName');
+        if (nameInput) nameInput.focus();
+      }, 100);
     },
+    
+    closeEditModal() {
+      this.showEditModal = false;
+    },
+    
     openDeleteModal(subject) {
       this.subjectToDelete = subject;
       this.showDeleteModal = true;
+    },
+    
+    closeDeleteModal() {
+      this.showDeleteModal = false;
     },
     async addSubject() {
       this.loading = true;
@@ -127,7 +169,7 @@ export default {
             "Content-Type": "application/json",
           },
         });
-        this.showAddModal = false;
+        this.closeAddModal();
         this.fetchSubjects();
         this.showToast("Subject added successfully", "Success", "success");
       } catch (error) {
@@ -154,7 +196,7 @@ export default {
             },
           }
         );
-        this.showEditModal = false;
+        this.closeEditModal();
         this.fetchSubjects();
         this.showToast("Subject updated successfully", "Success", "success");
       } catch (error) {
@@ -173,7 +215,7 @@ export default {
             "Authentication-Token": localStorage.getItem("token"),
           },
         });
-        this.showDeleteModal = false;
+        this.closeDeleteModal();
         this.fetchSubjects();
         this.showToast("Subject deleted successfully", "Success", "success");
       } catch (error) {
@@ -328,195 +370,192 @@ export default {
           </div>
       </div>
 
-      <!-- Add Subject Modal -->
-      <div class="modal fade" :class="{ 'show d-block': showAddModal }" tabindex="-1" role="dialog" style="backdrop-filter: blur(5px);">
-          <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
-              <div style="border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden;">
-                  <div style="background: #4e73df; padding: 1.5rem;">
-                      <div style="display: flex; align-items: center;">
-                          <i class="fas fa-plus-circle" style="color: white; font-size: 1.5rem; margin-right: 1rem;"></i>
-                          <h5 style="color: white; font-weight: 300; margin: 0;">Add New Subject</h5>
-                      </div>
-                      <button type="button" class="btn-close btn-close-white" style="position: absolute; top: 1.25rem; right: 1.25rem;" @click="showAddModal = false"></button>
-                  </div>
-                  <div style="padding: 1.5rem; background: white;">
-                      <div style="margin-bottom: 1.5rem;">
-                          <label for="subjectName" style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Subject Name</label>
-                          <div style="display: flex; background-color: #f8f9fa; border-radius: 6px; overflow: hidden;">
-                              <span style="display: flex; align-items: center; justify-content: center; padding: 0 1rem; background-color: #f8f9fa;">
-                                  <i class="fas fa-book" style="color: #4e73df;"></i>
-                              </span>
-                              <input 
-                                  type="text" 
-                                  class="form-control form-control-lg" 
-                                  style="border: none; box-shadow: none; background-color: #f8f9fa; padding: 0.75rem;" 
-                                  id="subjectName" 
-                                  placeholder="Enter subject name"
-                                  v-model="newSubject.name" 
-                                  required
-                              >
-                          </div>
-                      </div>
-                      <div style="margin-bottom: 1rem;">
-                          <label for="subjectDescription" style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Description</label>
-                          <div style="display: flex; background-color: #f8f9fa; border-radius: 6px; overflow: hidden;">
-                              <span style="display: flex; align-items: center; justify-content: center; padding: 0 1rem; background-color: #f8f9fa;">
-                                  <i class="fas fa-align-left" style="color: #4e73df;"></i>
-                              </span>
-                              <textarea 
-                                  class="form-control form-control-lg" 
-                                  style="border: none; box-shadow: none; background-color: #f8f9fa; padding: 0.75rem;" 
-                                  id="subjectDescription" 
-                                  placeholder="Enter subject description (optional)"
-                                  v-model="newSubject.description" 
-                                  rows="4"
-                              ></textarea>
-                          </div>
-                      </div>
-                  </div>
-                  <div style="padding: 1.5rem; background: white; border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: flex-end;">
-                      <button type="button" 
-                              class="btn btn-light btn-lg" 
-                              style="margin-right: 0.75rem; padding-left: 1.5rem; padding-right: 1.5rem;" 
-                              @click="showAddModal = false">
-                          Cancel
-                      </button>
-                      <button 
-                          type="button" 
-                          class="btn btn-primary btn-lg" 
-                          style="padding-left: 1.5rem; padding-right: 1.5rem; display: flex; align-items: center;" 
-                          @click="addSubject" 
-                          :disabled="loading || !newSubject.name"
-                      >
-                          <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          <i v-else class="fas fa-plus-circle me-2"></i>
-                          Create Subject
-                      </button>
-                  </div>
-              </div>
-          </div>
-      </div>
-      <div class="modal-backdrop fade" :class="{ 'show': showAddModal }" v-if="showAddModal" style="opacity: 0.6;"></div>
+<!-- Add Subject Modal - Completely Fixed -->
+<div v-if="showAddModal" class="modal" style="display: block; background-color: rgba(0, 0, 0, 0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1050; overflow-x: hidden; overflow-y: auto; outline: 0;">
+<div class="modal-dialog modal-dialog-centered" style="position: relative; width: auto; margin: 1.75rem auto; max-width: 500px; pointer-events: none; z-index: 1051;">
+    <div style="position: relative; display: flex; flex-direction: column; width: 100%; pointer-events: auto; background-color: white; border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden;">
+        <div style="background: #4e73df; padding: 1.5rem; position: relative;">
+            <div style="display: flex; align-items: center;">
+                <i class="fas fa-plus-circle" style="color: white; font-size: 1.5rem; margin-right: 1rem;"></i>
+                <h5 style="color: white; font-weight: 300; margin: 0;">Add New Subject</h5>
+            </div>
+            <button type="button" class="btn-close btn-close-white" style="position: absolute; top: 1.25rem; right: 1.25rem;" @click.prevent.stop="closeAddModal"></button>
+        </div>
+        <div style="padding: 1.5rem; background: white;">
+            <div style="margin-bottom: 1.5rem;">
+                <label for="subjectName" style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Subject Name</label>
+                <div style="display: flex; background-color: #f8f9fa; border-radius: 6px; overflow: hidden;">
+                    <span style="display: flex; align-items: center; justify-content: center; padding: 0 1rem; background-color: #f8f9fa;">
+                        <i class="fas fa-book" style="color: #4e73df;"></i>
+                    </span>
+                    <input 
+                        type="text" 
+                        class="form-control form-control-lg" 
+                        style="border: none; box-shadow: none; background-color: #f8f9fa; padding: 0.75rem;" 
+                        id="subjectName" 
+                        placeholder="Enter subject name"
+                        v-model="newSubject.name" 
+                        required
+                    >
+                </div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label for="subjectDescription" style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Description</label>
+                <div style="display: flex; background-color: #f8f9fa; border-radius: 6px; overflow: hidden;">
+                    <span style="display: flex; align-items: center; justify-content: center; padding: 0 1rem; background-color: #f8f9fa;">
+                        <i class="fas fa-align-left" style="color: #4e73df;"></i>
+                    </span>
+                    <textarea 
+                        class="form-control form-control-lg" 
+                        style="border: none; box-shadow: none; background-color: #f8f9fa; padding: 0.75rem;" 
+                        id="subjectDescription" 
+                        placeholder="Enter subject description (optional)"
+                        v-model="newSubject.description" 
+                        rows="4"
+                    ></textarea>
+                </div>
+            </div>
+        </div>
+        <div style="padding: 1.5rem; background: white; border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: flex-end;">
+            <button type="button" 
+                    class="btn btn-light btn-lg" 
+                    style="margin-right: 0.75rem; padding-left: 1.5rem; padding-right: 1.5rem;" 
+                    @click.stop.prevent="closeAddModal">
+                Cancel
+            </button>
+            <button 
+                type="button" 
+                class="btn btn-primary btn-lg" 
+                style="padding-left: 1.5rem; padding-right: 1.5rem; display: flex; align-items: center;" 
+                @click.stop.prevent="addSubject" 
+                :disabled="loading || !newSubject.name"
+            >
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <i v-else class="fas fa-plus-circle me-2"></i>
+                Create Subject
+            </button>
+        </div>
+    </div>
+</div>
+</div>
 
-      <!-- Edit Subject Modal -->
-      <div class="modal fade" :class="{ 'show d-block': showEditModal }" tabindex="-1" role="dialog" style="backdrop-filter: blur(5px);">
-          <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
-              <div style="border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden;">
-                  <div style="background: #4e73df; padding: 1.5rem;">
-                      <div style="display: flex; align-items: center;">
-                          <i class="fas fa-edit" style="color: white; font-size: 1.5rem; margin-right: 1rem;"></i>
-                          <h5 style="color: white; font-weight: 300; margin: 0;">Edit Subject</h5>
-                      </div>
-                      <button type="button" class="btn-close btn-close-white" style="position: absolute; top: 1.25rem; right: 1.25rem;" @click="showEditModal = false"></button>
-                  </div>
-                  <div style="padding: 1.5rem; background: white;" v-if="editingSubject">
-                      <div style="margin-bottom: 1.5rem;">
-                          <label for="editSubjectName" style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Subject Name</label>
-                          <div style="display: flex; background-color: #f8f9fa; border-radius: 6px; overflow: hidden;">
-                              <span style="display: flex; align-items: center; justify-content: center; padding: 0 1rem; background-color: #f8f9fa;">
-                                  <i class="fas fa-book" style="color: #4e73df;"></i>
-                              </span>
-                              <input 
-                                  type="text" 
-                                  class="form-control form-control-lg" 
-                                  style="border: none; box-shadow: none; background-color: #f8f9fa; padding: 0.75rem;" 
-                                  id="editSubjectName" 
-                                  v-model="editingSubject.name" 
-                                  required
-                              >
-                          </div>
-                      </div>
-                      <div style="margin-bottom: 1rem;">
-                          <label for="editSubjectDescription" style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Description</label>
-                          <div style="display: flex; background-color: #f8f9fa; border-radius: 6px; overflow: hidden;">
-                              <span style="display: flex; align-items: center; justify-content: center; padding: 0 1rem; background-color: #f8f9fa;">
-                                  <i class="fas fa-align-left" style="color: #4e73df;"></i>
-                              </span>
-                              <textarea 
-                                  class="form-control form-control-lg" 
-                                  style="border: none; box-shadow: none; background-color: #f8f9fa; padding: 0.75rem;" 
-                                  id="editSubjectDescription" 
-                                  v-model="editingSubject.description" 
-                                  rows="4"
-                              ></textarea>
-                          </div>
-                      </div>
-                  </div>
-                  <div style="padding: 1.5rem; background: white; border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: flex-end;">
-                      <button type="button" 
-                              class="btn btn-light btn-lg" 
-                              style="margin-right: 0.75rem; padding-left: 1.5rem; padding-right: 1.5rem;" 
-                              @click="showEditModal = false">
-                          Cancel
-                      </button>
-                      <button 
-                          type="button" 
-                          class="btn btn-primary btn-lg" 
-                          style="padding-left: 1.5rem; padding-right: 1.5rem; display: flex; align-items: center;" 
-                          @click="updateSubject" 
-                          :disabled="loading || !editingSubject?.name"
-                      >
-                          <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          <i v-else class="fas fa-save me-2"></i>
-                          Update Subject
-                      </button>
-                  </div>
-              </div>
-          </div>
-      </div>
-      <div class="modal-backdrop fade" :class="{ 'show': showEditModal }" v-if="showEditModal" style="opacity: 0.6;"></div>
+<!-- Edit Subject Modal - Completely Fixed -->
+<div v-if="showEditModal" class="modal" style="display: block; background-color: rgba(0, 0, 0, 0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1050; overflow-x: hidden; overflow-y: auto; outline: 0;">
+<div class="modal-dialog modal-dialog-centered" style="position: relative; width: auto; margin: 1.75rem auto; max-width: 500px; pointer-events: none; z-index: 1051;">
+    <div style="position: relative; display: flex; flex-direction: column; width: 100%; pointer-events: auto; background-color: white; border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden;">
+        <div style="background: #4e73df; padding: 1.5rem; position: relative;">
+            <div style="display: flex; align-items: center;">
+                <i class="fas fa-edit" style="color: white; font-size: 1.5rem; margin-right: 1rem;"></i>
+                <h5 style="color: white; font-weight: 300; margin: 0;">Edit Subject</h5>
+            </div>
+            <button type="button" class="btn-close btn-close-white" style="position: absolute; top: 1.25rem; right: 1.25rem;" @click.stop.prevent="closeEditModal"></button>
+        </div>
+        <div style="padding: 1.5rem; background: white;" v-if="editingSubject">
+            <div style="margin-bottom: 1.5rem;">
+                <label for="editSubjectName" style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Subject Name</label>
+                <div style="display: flex; background-color: #f8f9fa; border-radius: 6px; overflow: hidden;">
+                    <span style="display: flex; align-items: center; justify-content: center; padding: 0 1rem; background-color: #f8f9fa;">
+                        <i class="fas fa-book" style="color: #4e73df;"></i>
+                    </span>
+                    <input 
+                        type="text" 
+                        class="form-control form-control-lg" 
+                        style="border: none; box-shadow: none; background-color: #f8f9fa; padding: 0.75rem;" 
+                        id="editSubjectName" 
+                        v-model="editingSubject.name" 
+                        required
+                    >
+                </div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label for="editSubjectDescription" style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Description</label>
+                <div style="display: flex; background-color: #f8f9fa; border-radius: 6px; overflow: hidden;">
+                    <span style="display: flex; align-items: center; justify-content: center; padding: 0 1rem; background-color: #f8f9fa;">
+                        <i class="fas fa-align-left" style="color: #4e73df;"></i>
+                    </span>
+                    <textarea 
+                        class="form-control form-control-lg" 
+                        style="border: none; box-shadow: none; background-color: #f8f9fa; padding: 0.75rem;" 
+                        id="editSubjectDescription" 
+                        v-model="editingSubject.description" 
+                        rows="4"
+                    ></textarea>
+                </div>
+            </div>
+        </div>
+        <div style="padding: 1.5rem; background: white; border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: flex-end;">
+            <button type="button" 
+                    class="btn btn-light btn-lg" 
+                    style="margin-right: 0.75rem; padding-left: 1.5rem; padding-right: 1.5rem;" 
+                    @click.stop.prevent="closeEditModal">
+                Cancel
+            </button>
+            <button 
+                type="button" 
+                class="btn btn-primary btn-lg" 
+                style="padding-left: 1.5rem; padding-right: 1.5rem; display: flex; align-items: center;" 
+                @click.stop.prevent="updateSubject" 
+                :disabled="loading || !editingSubject?.name"
+            >
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <i v-else class="fas fa-save me-2"></i>
+                Update Subject
+            </button>
+        </div>
+    </div>
+</div>
+</div>
 
-      <!-- Delete Subject Modal -->
-      <div class="modal fade" :class="{ 'show d-block': showDeleteModal }" tabindex="-1" role="dialog" style="backdrop-filter: blur(5px);">
-          <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
-              <div style="border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden;">
-                  <div style="background: #e74a3b; padding: 1.5rem;">
-                      <div style="display: flex; align-items: center;">
-                          <i class="fas fa-exclamation-triangle" style="color: white; font-size: 1.5rem; margin-right: 1rem;"></i>
-                          <h5 style="color: white; font-weight: 300; margin: 0;">Delete Subject</h5>
-                      </div>
-                      <button type="button" class="btn-close btn-close-white" style="position: absolute; top: 1.25rem; right: 1.25rem;" @click="showDeleteModal = false"></button>
-                  </div>
-                  <div style="padding: 1.5rem; background: white;" v-if="subjectToDelete">
-                      <div style="text-align: center; margin-bottom: 1.5rem;">
-                          <div style="width: fit-content; margin: 0 auto 1.5rem; padding: 1.5rem; background-color: rgba(231, 74, 59, 0.1); border-radius: 50%;">
-                              <i class="fas fa-trash" style="font-size: 2.5rem; color: #e74a3b;"></i>
-                          </div>
-                          <h4 style="margin-bottom: 0.5rem;">Are you sure?</h4>
-                          <p style="color: #6c757d;">You are about to delete the subject <strong style="color: #e74a3b;">{{ subjectToDelete.name }}</strong></p>
-                      </div>
-                      <div style="padding: 1rem; background-color: #fff3cd; border-radius: 6px; color: #856404;">
-                          <div style="display: flex;">
-                              <i class="fas fa-exclamation-circle" style="font-size: 1.25rem; margin-right: 1rem;"></i>
-                              <div>
-                                  <p style="margin-bottom: 0;"><strong>Warning:</strong> This will permanently delete all chapters, quizzes, and questions associated with this subject. This action cannot be undone.</p>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-                  <div style="padding: 1.5rem; background: white; border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: flex-end;">
-                      <button type="button" 
-                              class="btn btn-light btn-lg" 
-                              style="margin-right: 0.75rem; padding-left: 1.5rem; padding-right: 1.5rem;" 
-                              @click="showDeleteModal = false">
-                          Cancel
-                      </button>
-                      <button 
-                          type="button" 
-                          class="btn btn-danger btn-lg" 
-                          style="padding-left: 1.5rem; padding-right: 1.5rem; display: flex; align-items: center;" 
-                          @click="deleteSubject" 
-                          :disabled="loading"
-                      >
-                          <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          <i v-else class="fas fa-trash-alt me-2"></i>
-                          Delete Subject
-                      </button>
-                  </div>
-              </div>
-          </div>
-      </div>
-      <div class="modal-backdrop fade" :class="{ 'show': showDeleteModal }" v-if="showDeleteModal" style="opacity: 0.6;"></div>
-  </div>
-    `,
+<!-- Delete Subject Modal - Completely Fixed -->
+<div v-if="showDeleteModal" class="modal" style="display: block; background-color: rgba(0, 0, 0, 0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1050; overflow-x: hidden; overflow-y: auto; outline: 0;">
+<div class="modal-dialog modal-dialog-centered" style="position: relative; width: auto; margin: 1.75rem auto; max-width: 500px; pointer-events: none; z-index: 1051;">
+    <div style="position: relative; display: flex; flex-direction: column; width: 100%; pointer-events: auto; background-color: white; border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden;">
+        <div style="background: #e74a3b; padding: 1.5rem; position: relative;">
+            <div style="display: flex; align-items: center;">
+                <i class="fas fa-exclamation-triangle" style="color: white; font-size: 1.5rem; margin-right: 1rem;"></i>
+                <h5 style="color: white; font-weight: 300; margin: 0;">Delete Subject</h5>
+            </div>
+            <button type="button" class="btn-close btn-close-white" style="position: absolute; top: 1.25rem; right: 1.25rem;" @click.stop.prevent="closeDeleteModal"></button>
+        </div>
+        <div style="padding: 1.5rem; background: white;" v-if="subjectToDelete">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <div style="width: fit-content; margin: 0 auto 1.5rem; padding: 1.5rem; background-color: rgba(231, 74, 59, 0.1); border-radius: 50%;">
+                    <i class="fas fa-trash" style="font-size: 2.5rem; color: #e74a3b;"></i>
+                </div>
+                <h4 style="margin-bottom: 0.5rem;">Are you sure?</h4>
+                <p style="color: #6c757d;">You are about to delete the subject <strong style="color: #e74a3b;">{{ subjectToDelete.name }}</strong></p>
+            </div>
+            <div style="padding: 1rem; background-color: #fff3cd; border-radius: 6px; color: #856404;">
+                <div style="display: flex;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 1.25rem; margin-right: 1rem;"></i>
+                    <div>
+                        <p style="margin-bottom: 0;"><strong>Warning:</strong> This will permanently delete all chapters, quizzes, and questions associated with this subject. This action cannot be undone.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="padding: 1.5rem; background: white; border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: flex-end;">
+            <button type="button" 
+                    class="btn btn-light btn-lg" 
+                    style="margin-right: 0.75rem; padding-left: 1.5rem; padding-right: 1.5rem;" 
+                    @click.stop.prevent="closeDeleteModal">
+                Cancel
+            </button>
+            <button 
+                type="button" 
+                class="btn btn-danger btn-lg" 
+                style="padding-left: 1.5rem; padding-right: 1.5rem; display: flex; align-items: center;" 
+                @click.stop.prevent="deleteSubject" 
+                :disabled="loading"
+            >
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <i v-else class="fas fa-trash-alt me-2"></i>
+                Delete Subject
+            </button>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+`,
 };

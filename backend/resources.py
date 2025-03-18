@@ -379,6 +379,7 @@ class QuestionListAPI(Resource):
     @auth_required('token')
     def get(self, quiz_id):
         questions = Question.query.filter_by(quiz_id=quiz_id).all()
+        print(questions)
         return questions
     
     @auth_required('token')

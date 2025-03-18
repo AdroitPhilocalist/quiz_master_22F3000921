@@ -34,6 +34,107 @@ export default {
             this.animateItems = true;
         }, 100);
     },
+    mounted() {
+        // Create and inject animations dynamically
+        const styleEl = document.createElement('style');
+        styleEl.textContent = `
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            @keyframes fadeInOut {
+                0% { opacity: 0.5; }
+                50% { opacity: 1; }
+                100% { opacity: 0.5; }
+            }
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+                100% { transform: scale(1); }
+            }
+            .question-item {
+                transition: all 0.3s ease;
+                border-radius: 12px !important;
+                border: none !important;
+                overflow: hidden;
+                margin-bottom: 1rem;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            }
+            .question-item:hover {
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            }
+            .question-header {
+                padding: 1rem;
+                background-color: white;
+                transition: all 0.2s ease;
+            }
+            .question-header:hover {
+                background-color: rgba(78, 115, 223, 0.05);
+            }
+            .option-card {
+                transition: all 0.2s ease;
+                border-radius: 8px;
+                overflow: hidden;
+                margin-bottom: 0.75rem;
+            }
+            .option-card:hover {
+                box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            }
+            .correct-option {
+                border-left: 3px solid #1cc88a;
+            }
+            .incorrect-option {
+                border-left: 3px solid #e74a3b;
+            }
+            .fade-in-up {
+                animation: fadeInUp 0.5s ease forwards;
+            }
+            .action-btn {
+                transition: all 0.2s ease;
+                border-radius: 50px;
+                width: 36px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .action-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+            }
+            .btn-floating {
+                position: fixed;
+                bottom: 2rem;
+                right: 2rem;
+                border-radius: 50%;
+                width: 60px;
+                height: 60px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                z-index: 1000;
+                font-size: 1.5rem;
+                transition: all 0.3s ease;
+            }
+            .btn-floating:hover {
+                transform: translateY(-5px) rotate(90deg);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            }
+        `;
+        document.head.appendChild(styleEl);
+        
+        // Remove the style element when component is destroyed
+        this.$once('hook:beforeDestroy', () => {
+            document.head.removeChild(styleEl);
+        });
+    },
     computed: {
         filteredQuestions() {
             if (!this.searchQuery) return this.questions;
@@ -92,7 +193,8 @@ export default {
             toastEl.addEventListener("hidden.bs.toast", () => {
               toastEl.remove();
             });
-          },
+        },
+        
         async fetchQuiz() {
             try {
                 const response = await axios.get(`/api/quizzes/${this.quizId}`, {
@@ -106,6 +208,7 @@ export default {
                 console.error(error);
             }
         },
+        
         async fetchQuestions() {
             this.loading = true;
             try {
@@ -115,6 +218,7 @@ export default {
                     }
                 });
                 this.questions = response.data;
+                console.log(this.questions);
             } catch (error) {
                 this.error = 'Failed to load questions';
                 console.error(error);
@@ -122,7 +226,9 @@ export default {
                 this.loading = false;
             }
         },
+        
         openAddModal() {
+            this.error = null;
             this.newQuestion = {
                 text: '',
                 options: [
@@ -132,19 +238,46 @@ export default {
                 quiz_id: this.quizId
             };
             this.showAddModal = true;
+            // Focus the input field after the modal is shown
+            setTimeout(() => {
+                const input = document.getElementById('questionText');
+                if (input) input.focus();
+            }, 100);
         },
+        
+        closeAddModal() {
+            this.showAddModal = false;
+        },
+        
         openEditModal(question) {
+            this.error = null;
             this.editingQuestion = JSON.parse(JSON.stringify(question)); // Deep copy
             this.showEditModal = true;
+            // Focus the input field after the modal is shown
+            setTimeout(() => {
+                const input = document.getElementById('editQuestionText');
+                if (input) input.focus();
+            }, 100);
         },
+        
+        closeEditModal() {
+            this.showEditModal = false;
+        },
+        
         openDeleteModal(question) {
             this.questionToDelete = question;
             this.showDeleteModal = true;
         },
+        
+        closeDeleteModal() {
+            this.showDeleteModal = false;
+        },
+        
         addOption(question) {
             if (!question) question = this.editingQuestion;
             question.options.push({ text: '', is_correct: false });
         },
+        
         removeOption(question, index) {
             if (typeof question === 'number') {
                 // If first argument is a number, it's the index from edit modal
@@ -161,6 +294,7 @@ export default {
                 }
             }
         },
+        
         setCorrectOption(index, isMultipleChoice = false) {
             if (!this.editingQuestion) return;
             
@@ -179,6 +313,7 @@ export default {
                 }
             }
         },
+        
         validateQuestion(question) {
             // Check if question text is provided
             if (!question.text.trim()) {
@@ -202,6 +337,7 @@ export default {
             
             return true;
         },
+        
         async addQuestion() {
             if (!this.validateQuestion(this.newQuestion)) return;
             
@@ -213,7 +349,7 @@ export default {
                         'Content-Type': 'application/json'
                     }
                 });
-                this.showAddModal = false;
+                this.closeAddModal();
                 this.fetchQuestions();
                 this.showToast("Question added successfully", "Success", "success");
             } catch (error) {
@@ -224,6 +360,7 @@ export default {
                 this.loading = false;
             }
         },
+        
         async updateQuestion() {
             if (!this.validateQuestion(this.editingQuestion)) return;
             
@@ -235,7 +372,7 @@ export default {
                         'Content-Type': 'application/json'
                     }
                 });
-                this.showEditModal = false;
+                this.closeEditModal();
                 this.fetchQuestions();
                 this.showToast("Question updated successfully", "Success", "success");
             } catch (error) {
@@ -246,6 +383,7 @@ export default {
                 this.loading = false;
             }
         },
+        
         async deleteQuestion() {
             this.loading = true;
             try {
@@ -254,7 +392,7 @@ export default {
                         'Authentication-Token': localStorage.getItem('token')
                     }
                 });
-                this.showDeleteModal = false;
+                this.closeDeleteModal();
                 this.fetchQuestions();
                 this.showToast("Question deleted successfully", "Success", "success");
             } catch (error) {
@@ -265,9 +403,11 @@ export default {
                 this.loading = false;
             }
         },
+        
         goBack() {
             this.$router.push(`/admin/chapters/${this.quiz?.chapter_id}/quizzes`);
         },
+        
         sortTable(field) {
             if (this.sortBy === field) {
                 this.sortDesc = !this.sortDesc;
@@ -276,252 +416,450 @@ export default {
                 this.sortDesc = false;
             }
         },
+        
         getSortIcon(field) {
             if (this.sortBy !== field) return 'fa-sort';
             return this.sortDesc ? 'fa-sort-down' : 'fa-sort-up';
         },
+        
         formatDate(dateString) {
+            console.log(dateString);
             return new Date(dateString).toLocaleString();
         }
     },
     template: `
-        <div class="container-fluid py-4">
-            <div class="row mb-4">
-                <div class="col-12">
-                    <button class="btn btn-outline-secondary" @click="goBack">
-                        <i class="fas fa-arrow-left me-1"></i> Back to Quizzes
+        <div class="container-fluid py-5" style="font-family: 'Segoe UI', Roboto, Arial, sans-serif;">
+            <!-- Header Section -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <div style="display: flex; align-items: center;">
+                    <button @click="goBack" class="btn btn-outline-primary me-3" 
+                            style="border-radius: 50px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(78, 115, 223, 0.15); transition: all 0.3s ease;">
+                        <i class="fas fa-arrow-left"></i>
                     </button>
+                    <div>
+                        <h2 style="font-weight: 700; color: #4e73df; margin: 0;">
+                            <i class="fas fa-question-circle me-2"></i>{{ quiz ? quiz.title : 'Quiz Questions' }}
+                        </h2>
+                        <p style="color: #858796; margin: 0; font-size: 0.9rem;">
+                            Manage questions and answer options for this quiz
+                        </p>
+                    </div>
+                </div>
+                <div class="input-group" style="max-width: 400px;">
+                    <input type="text" class="form-control" 
+                           style="border-radius: 50px 0 0 50px; padding-left: 1.5rem; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1);" 
+                           placeholder="Search questions..." 
+                           v-model="searchQuery">
+                    <span class="input-group-text" style="background: white; border: none; border-radius: 0 50px 50px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <i class="fas fa-search" style="color: #4e73df;"></i>
+                    </span>
                 </div>
             </div>
             
-            <div class="row">
-                <div class="col-12">
-                    <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-header bg-gradient-primary text-white py-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">
-                                    {{ quiz ? quiz.title + ' - Questions' : 'Questions' }}
-                                </h5>
-                                <div>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" placeholder="Search questions..." v-model="searchQuery">
-                                        <button class="btn btn-light" type="button">
-                                            <i class="fas fa-search"></i>
-                                        </button>
-                                        <button class="btn btn-light ms-2" @click="openAddModal">
-                                            <i class="fas fa-plus me-1"></i> Add Question
-                                        </button>
-                                    </div>
-                                </div>
+            <!-- Main Content Card -->
+            <div style="border: none; border-radius: 15px; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08); overflow: hidden; margin-bottom: 2rem;">
+                <div style="background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); padding: 0;">
+                    <div style="padding: 1.5rem; background-color: rgba(0, 0, 0, 0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center;">
+                                <i class="fas fa-brain" style="color: white; font-size: 1.75rem; margin-right: 1rem;"></i>
+                                <h4 style="color: white; margin: 0; font-weight: 300;">Quiz Questions</h4>
+                            </div>
+                            <button @click="openAddModal" class="btn btn-light" 
+                                    style="border-radius: 50px; padding: 0.5rem 1.5rem; box-shadow: 0 2px 10px rgba(255, 255, 255, 0.2); transition: all 0.3s ease;">
+                                <i class="fas fa-plus me-2"></i> Add Question
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="padding: 1.5rem;">
+                    <!-- Loading State -->
+                    <div v-if="loading" style="text-align: center; padding: 5rem;">
+                        <div class="spinner-grow text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p style="color: #6c757d; animation: fadeInOut 1.5s infinite;">Loading questions...</p>
+                    </div>
+                    
+                    <!-- Error State -->
+                    <div v-else-if="error" 
+                         style="margin: 1.5rem; background-color: #f8d7da; color: #842029; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);">
+                        <div style="display: flex;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; margin-right: 1rem;"></i>
+                            <div>
+                                <h5 style="margin-top: 0; font-weight: 600;">Something went wrong!</h5>
+                                <p style="margin-bottom: 0;">{{ error }}</p>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <div v-if="loading" class="text-center py-5">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div v-else-if="questions.length === 0" style="text-align: center; padding: 5rem;">
+                        <div style="margin-bottom: 1.5rem; position: relative;">
+                            <i class="fas fa-question-circle" style="font-size: 4rem; color: #adb5bd; opacity: 0.5; margin-bottom: 1rem;"></i>
+                            <div style="position: relative;">
+                                <i class="fas fa-plus-circle" 
+                                   style="color: #4e73df; position: absolute; font-size: 1.5rem; top: -30px; right: calc(50% - 45px); animation: pulse 2s infinite;"></i>
                             </div>
-                            <div v-else-if="error" class="alert alert-danger" role="alert">
-                                {{ error }}
-                            </div>
-                            <div v-else-if="questions.length === 0" class="text-center py-5">
-                                <i class="fas fa-question-circle fa-3x text-muted mb-3"></i>
-                                <p class="lead">No questions found for this quiz</p>
-                                <button class="btn btn-primary" @click="openAddModal">
-                                    <i class="fas fa-plus me-1"></i> Add Question
-                                </button>
-                            </div>
-                            <div v-else>
-                                <div class="accordion" id="questionsAccordion">
-                                    <div v-for="(question, index) in sortedQuestions" :key="question.id" 
-                                         class="accordion-item mb-3 border shadow-sm"
-                                         :class="{'animate__animated animate__fadeIn': animateItems}">
-                                        <h2 class="accordion-header" :id="'heading' + question.id">
-                                            <button class="accordion-button collapsed" type="button" 
-                                                    data-bs-toggle="collapse" :data-bs-target="'#collapse' + question.id" 
-                                                    aria-expanded="false" :aria-controls="'collapse' + question.id">
-                                                <div class="d-flex justify-content-between w-100 align-items-center">
-                                                    <div>
-                                                        <span class="badge bg-primary me-2">Q{{ index + 1 }}</span>
-                                                        {{ question.text }}
-                                                    </div>
-                                                    <div class="btn-group">
-                                                        <button @click.stop.prevent="openEditModal(question)" class="btn btn-sm btn-outline-primary">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                        <button @click.stop.prevent="openDeleteModal(question)" class="btn btn-sm btn-outline-danger">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
+                        </div>
+                        <h3 style="color: #6c757d; font-weight: 300;">No questions found</h3>
+                        <p style="color: #6c757d; margin-bottom: 1.5rem;">Start by adding your first question to this quiz</p>
+                        <button class="btn btn-primary btn-lg" 
+                                style="border-radius: 50px; padding: 0.75rem 1.75rem; box-shadow: 0 2px 15px rgba(78, 115, 223, 0.2);" 
+                                @click="openAddModal">
+                            <i class="fas fa-plus me-2"></i> Add Your First Question
+                        </button>
+                    </div>
+                    
+                    <!-- Questions List -->
+                    <div v-else>
+                        <div class="accordion" id="questionsAccordion">
+                            <div v-for="(question, index) in sortedQuestions" 
+                                 :key="question.id" 
+                                 class="question-item"
+                                 :style="{
+                                     animationDelay: index * 0.05 + 's'
+                                 }"
+                                 :class="{'fade-in-up': animateItems}">
+                                <div class="accordion-item border-0 shadow-sm">
+                                    <h2 class="accordion-header" :id="'heading' + question.id">
+                                        <button class="accordion-button collapsed question-header" 
+                                                type="button" 
+                                                data-bs-toggle="collapse" 
+                                                :data-bs-target="'#collapse' + question.id" 
+                                                aria-expanded="false" 
+                                                :aria-controls="'collapse' + question.id"
+                                                style="background-color: white; border-radius: 12px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                                <div style="display: flex; align-items: center;">
+                                                    <span style="background-color: #4e73df; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; margin-right: 1rem; flex-shrink: 0;">
+                                                        {{ index + 1 }}
+                                                    </span>
+                                                    <span style="font-weight: 500; color: #5a5c69;">{{ question.text }}</span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div :id="'collapse' + question.id" 
+                                         class="accordion-collapse collapse" 
+                                         :aria-labelledby="'heading' + question.id" 
+                                         data-bs-parent="#questionsAccordion">
+                                        <div class="accordion-body" style="background-color: #f8f9fc; border-radius: 0 0 12px 12px;">
+                                            <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                                                <h6 style="font-weight: 600; color: #4e73df; margin: 0;">
+                                                    <i class="fas fa-list-ul me-2"></i>Options:
+                                                </h6>
+                                                <div>
+                                                    <button @click="openEditModal(question)" 
+                                                            class="btn btn-outline-primary action-btn me-2"
+                                                            style="border-radius: 50%; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button @click="openDeleteModal(question)" 
+                                                            class="btn btn-outline-danger action-btn"
+                                                            style="border-radius: 50%; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div style="margin-bottom: 1rem;">
+                                                <div v-for="option in question.options" 
+                                                     :key="option.id"
+                                                     class="option-card" 
+                                                     :class="option.is_correct ? 'correct-option' : 'incorrect-option'">
+                                                    <div style="padding: 0.75rem 1rem; background-color: white; display: flex; align-items: center; justify-content: space-between; border-radius: 8px;">
+                                                        <div>{{ option.text }}</div>
+                                                        <span v-if="option.is_correct" 
+                                                              style="padding: 0.25rem 0.75rem; background-color: rgba(28, 200, 138, 0.1); color: #1cc88a; border-radius: 50px; font-size: 0.8rem; font-weight: 600;">
+                                                            <i class="fas fa-check-circle me-1"></i> Correct
+                                                        </span>
                                                     </div>
                                                 </div>
-                                            </button>
-                                        </h2>
-                                        <div :id="'collapse' + question.id" class="accordion-collapse collapse" 
-                                             :aria-labelledby="'heading' + question.id" data-bs-parent="#questionsAccordion">
-                                            <div class="accordion-body">
-                                                <h6>Options:</h6>
-                                                <ul class="list-group">
-                                                    <li v-for="option in question.options" :key="option.id" 
-                                                        class="list-group-item d-flex justify-content-between align-items-center">
-                                                        {{ option.text }}
-                                                        <span v-if="option.is_correct" class="badge bg-success">Correct</span>
-                                                    </li>
-                                                </ul>
-                                                <div class="mt-3 text-muted small">
-                                                    Created: {{ formatDate(question.created_at) }}
-                                                </div>
+                                            </div>
+                                            
+                                            <div style="font-size: 0.8rem; color: #858796;">
+                                                <i class="far fa-calendar-alt me-1"></i> Created: {{ formatDate(question) }}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        
+                        <button @click="openAddModal" class="btn btn-primary btn-floating">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
                 </div>
             </div>
-
+            
             <!-- Add Question Modal -->
-            <div class="modal fade" :class="{ 'show d-block': showAddModal }" tabindex="-1" role="dialog">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-primary text-white">
-                            <h5 class="modal-title">Add Question</h5>
-                            <button type="button" class="btn-close btn-close-white" @click="showAddModal = false"></button>
+            <div v-if="showAddModal" class="modal" style="display: block; background-color: rgba(0, 0, 0, 0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1050; overflow-x: hidden; overflow-y: auto; outline: 0;">
+                <div class="modal-dialog modal-dialog-centered modal-lg" style="position: relative; width: auto; margin: 1.75rem auto; pointer-events: none; z-index: 1051;">
+                    <div style="position: relative; display: flex; flex-direction: column; width: 100%; pointer-events: auto; background-color: white; border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden;">
+                        <div style="background: #4e73df; padding: 1.5rem; position: relative;">
+                            <div style="display: flex; align-items: center;">
+                                <i class="fas fa-plus-circle" style="color: white; font-size: 1.5rem; margin-right: 1rem;"></i>
+                                <h5 style="color: white; font-weight: 300; margin: 0;">Add New Question</h5>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white" style="position: absolute; top: 1.25rem; right: 1.25rem;" @click="closeAddModal"></button>
                         </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label for="questionText" class="form-label">Question Text</label>
-                                <textarea class="form-control" id="questionText" v-model="newQuestion.text" rows="3" required></textarea>
+                        <div style="padding: 1.5rem; background: white; max-height: 70vh; overflow-y: auto;">
+                            <div v-if="error" 
+                                 style="padding: 0.75rem 1rem; background-color: #f8d7da; color: #842029; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #dc3545;">
+                                <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
                             </div>
                             
-                            <h6>Options <small class="text-muted">(Select at least one correct answer)</small></h6>
-                            <div class="card mb-2" v-for="(option, index) in newQuestion.options" :key="index">
-                                <div class="card-body p-3">
-                                    <div class="d-flex align-items-center">
-                                        <div class="form-check me-3">
-                                            <input class="form-check-input" type="checkbox" :id="'option' + index" v-model="option.is_correct">
-                                            <label class="form-check-label" :for="'option' + index">
-                                                Correct
+                            <div style="margin-bottom: 1.5rem;">
+                                <label for="questionText" style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Question Text</label>
+                                <div style="display: flex; background-color: #f8f9fa; border-radius: 6px; overflow: hidden;">
+                                    <span style="display: flex; align-items: center; justify-content: center; padding: 0 1rem; background-color: #f8f9fa;">
+                                        <i class="fas fa-question-circle" style="color: #4e73df;"></i>
+                                    </span>
+                                    <textarea 
+                                        class="form-control" 
+                                        style="border: none; box-shadow: none; background-color: #f8f9fa; padding: 0.75rem;" 
+                                        id="questionText" 
+                                        placeholder="Enter your question here"
+                                        v-model="newQuestion.text" 
+                                        rows="3"
+                                        required
+                                    ></textarea>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; color: #4e73df; margin: 0;">
+                                        <i class="fas fa-list-ul me-2"></i>Answer Options
+                                    </label>
+                                    <button type="button" 
+                                            class="btn btn-outline-primary btn-sm" 
+                                            @click="addOption(newQuestion)"
+                                            style="border-radius: 50px;">
+                                        <i class="fas fa-plus me-1"></i> Add Option
+                                    </button>
+                                </div>
+                                <p style="color: #858796; font-size: 0.85rem; margin-top: -0.5rem; margin-bottom: 1rem;">
+                                Select at least one correct answer option.
+                                </p>
+                                
+                                <div v-for="(option, index) in newQuestion.options" :key="index" 
+                                     style="margin-bottom: 0.75rem;">
+                                    <div style="display: flex; align-items: center; background-color: white; border-radius: 6px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); padding: 0.5rem; position: relative;" 
+                                         :class="option.is_correct ? 'correct-option' : 'incorrect-option'">
+                                        <div class="form-check form-switch" style="margin-right: 0.75rem;">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   style="width: 2.5em; height: 1.25em;"
+                                                   :id="'option-correct-' + index" 
+                                                   v-model="option.is_correct">
+                                            <label class="form-check-label" :for="'option-correct-' + index" style="font-size: 0.8rem; white-space: nowrap; margin-left: 0.7rem;">
+                                                {{ option.is_correct ? 'Correct' : 'Incorrect' }}
                                             </label>
                                         </div>
-                                        <div class="flex-grow-1">
-                                            <input type="text" class="form-control" placeholder="Option text" v-model="option.text" required>
-                                        </div>
-                                        <button type="button" class="btn btn-outline-danger ms-2" @click="removeOption(newQuestion, index)" 
+                                        <input type="text" 
+                                               class="form-control" 
+                                               style="border: none; background-color: transparent;" 
+                                               v-model="option.text" 
+                                               placeholder="Enter option text">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger" 
+                                                style="margin-left: 0.5rem;"
+                                                @click="removeOption(newQuestion, index)" 
                                                 :disabled="newQuestion.options.length <= 2">
                                             <i class="fas fa-times"></i>
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <button type="button" class="btn btn-outline-secondary" @click="addOption(newQuestion)">
-                                <i class="fas fa-plus me-1"></i> Add Option
-                            </button>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" @click="showAddModal = false">Cancel</button>
-                            <button type="button" class="btn btn-primary" @click="addQuestion" :disabled="loading">
-                                <span v-if="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <div style="padding: 1.5rem; background: white; border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: flex-end;">
+                            <button type="button" 
+                                    class="btn btn-light btn-lg" 
+                                    style="margin-right: 0.75rem; padding-left: 1.5rem; padding-right: 1.5rem;" 
+                                    @click="closeAddModal">
+                                Cancel
+                            </button>
+                            <button 
+                                type="button" 
+                                class="btn btn-primary btn-lg" 
+                                style="padding-left: 1.5rem; padding-right: 1.5rem; display: flex; align-items: center;" 
+                                @click="addQuestion" 
+                                :disabled="loading"
+                            >
+                                <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <i v-else class="fas fa-plus-circle me-2"></i>
                                 Add Question
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-backdrop fade" :class="{ 'show': showAddModal }" v-if="showAddModal"></div>
-
+            
             <!-- Edit Question Modal -->
-            <div class="modal fade" :class="{ 'show d-block': showEditModal }" tabindex="-1" role="dialog">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-primary text-white">
-                            <h5 class="modal-title">Edit Question</h5>
-                            <button type="button" class="btn-close btn-close-white" @click="showEditModal = false"></button>
+            <div v-if="showEditModal" class="modal" style="display: block; background-color: rgba(0, 0, 0, 0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1050; overflow-x: hidden; overflow-y: auto; outline: 0;">
+                <div class="modal-dialog modal-dialog-centered modal-lg" style="position: relative; width: auto; margin: 1.75rem auto; pointer-events: none; z-index: 1051;">
+                    <div style="position: relative; display: flex; flex-direction: column; width: 100%; pointer-events: auto; background-color: white; border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden;">
+                        <div style="background: #4e73df; padding: 1.5rem; position: relative;">
+                            <div style="display: flex; align-items: center;">
+                                <i class="fas fa-edit" style="color: white; font-size: 1.5rem; margin-right: 1rem;"></i>
+                                <h5 style="color: white; font-weight: 300; margin: 0;">Edit Question</h5>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white" style="position: absolute; top: 1.25rem; right: 1.25rem;" @click="closeEditModal"></button>
                         </div>
-                        <div class="modal-body" v-if="editingQuestion">
-                            <div v-if="error" class="alert alert-danger" role="alert">
-                                {{ error }}
+                        <div v-if="editingQuestion" style="padding: 1.5rem; background: white; max-height: 70vh; overflow-y: auto;">
+                            <div v-if="error" 
+                                 style="padding: 0.75rem 1rem; background-color: #f8d7da; color: #842029; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #dc3545;">
+                                <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
                             </div>
-                            <div class="mb-3">
-                                <label for="editQuestionText" class="form-label">Question Text</label>
-                                <textarea class="form-control" id="editQuestionText" v-model="editingQuestion.text" rows="3" required></textarea>
+                            
+                            <div style="margin-bottom: 1.5rem;">
+                                <label for="editQuestionText" style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Question Text</label>
+                                <div style="display: flex; background-color: #f8f9fa; border-radius: 6px; overflow: hidden;">
+                                    <span style="display: flex; align-items: center; justify-content: center; padding: 0 1rem; background-color: #f8f9fa;">
+                                        <i class="fas fa-question-circle" style="color: #4e73df;"></i>
+                                    </span>
+                                    <textarea 
+                                        class="form-control" 
+                                        style="border: none; box-shadow: none; background-color: #f8f9fa; padding: 0.75rem;" 
+                                        id="editQuestionText" 
+                                        placeholder="Enter your question here"
+                                        v-model="editingQuestion.text" 
+                                        rows="3"
+                                        required
+                                    ></textarea>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label d-flex justify-content-between align-items-center">
-                                    Options
-                                    <button type="button" class="btn btn-sm btn-outline-primary" @click="addOption(editingQuestion)">
+                            
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <label style="font-weight: 600; color: #4e73df; margin: 0;">
+                                        <i class="fas fa-list-ul me-2"></i>Answer Options
+                                    </label>
+                                    <button type="button" 
+                                            class="btn btn-outline-primary btn-sm" 
+                                            @click="addOption()"
+                                            style="border-radius: 50px;">
                                         <i class="fas fa-plus me-1"></i> Add Option
                                     </button>
-                                </label>
-                                <div class="card mb-2" v-for="(option, index) in editingQuestion.options" :key="index">
-                                    <div class="card-body p-3">
-                                        <div class="d-flex align-items-center">
-                                            <div class="form-check me-3">
-                                                <input class="form-check-input" type="checkbox" :id="'edit-option-' + index" 
-                                                    :checked="option.is_correct" 
-                                                    @change="setCorrectOption(index, true)">
-                                                <label class="form-check-label" :for="'edit-option-' + index">
-                                                    Correct
-                                                </label>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <input type="text" class="form-control" v-model="option.text" 
-                                                    placeholder="Option text" required>
-                                            </div>
-                                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" 
+                                </div>
+                                
+                                <p style="color: #858796; font-size: 0.85rem; margin-top: -0.5rem; margin-bottom: 1rem;">
+                                    Select at least one correct answer option.
+                                </p>
+                                
+                                <div v-for="(option, index) in editingQuestion.options" :key="index" 
+                                     style="margin-bottom: 0.75rem;">
+                                    <div style="display: flex; align-items: center; background-color: white; border-radius: 6px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); padding: 0.5rem; position: relative;" 
+                                         :class="option.is_correct ? 'correct-option' : 'incorrect-option'">
+                                        <div class="form-check form-switch" style="margin-right: 0.75rem;">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   style="width: 2.5em; height: 1.25em;"
+                                                   :id="'edit-option-correct-' + index" 
+                                                   :checked="option.is_correct"
+                                                   @change="setCorrectOption(index, true)">
+                                            <label class="form-check-label" :for="'edit-option-correct-' + index" style="font-size: 0.8rem; white-space: nowrap;">
+                                                {{ option.is_correct ? 'Correct' : 'Incorrect' }}
+                                            </label>
+                                        </div>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               style="border: none; background-color: transparent;" 
+                                               v-model="option.text" 
+                                               placeholder="Enter option text">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger" 
+                                                style="margin-left: 0.5rem;"
                                                 @click="removeOption(index)" 
                                                 :disabled="editingQuestion.options.length <= 2">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
+                                            <i class="fas fa-times"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" @click="showEditModal = false">Cancel</button>
-                            <button type="button" class="btn btn-primary" @click="updateQuestion" 
-                                :disabled="loading || !editingQuestion?.text">
-                                <span v-if="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <div style="padding: 1.5rem; background: white; border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: flex-end;">
+                            <button type="button" 
+                                    class="btn btn-light btn-lg" 
+                                    style="margin-right: 0.75rem; padding-left: 1.5rem; padding-right: 1.5rem;" 
+                                    @click="closeEditModal">
+                                Cancel
+                            </button>
+                            <button 
+                                type="button" 
+                                class="btn btn-primary btn-lg" 
+                                style="padding-left: 1.5rem; padding-right: 1.5rem; display: flex; align-items: center;" 
+                                @click="updateQuestion" 
+                                :disabled="loading"
+                            >
+                                <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <i v-else class="fas fa-save me-2"></i>
                                 Update Question
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-backdrop fade" :class="{ 'show': showEditModal }" v-if="showEditModal"></div>
-
+            
             <!-- Delete Question Modal -->
-            <div class="modal fade" :class="{ 'show d-block': showDeleteModal }" tabindex="-1" role="dialog">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header bg-danger text-white">
-                            <h5 class="modal-title">Delete Question</h5>
-                            <button type="button" class="btn-close btn-close-white" @click="showDeleteModal = false"></button>
-                        </div>
-                        <div class="modal-body" v-if="questionToDelete">
-                            <p>Are you sure you want to delete this question?</p>
-                            <div class="alert alert-warning">
-                                <strong>Warning:</strong> This action cannot be undone. All student responses to this question will also be deleted.
+            <div v-if="showDeleteModal" class="modal" style="display: block; background-color: rgba(0, 0, 0, 0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1050; overflow-x: hidden; overflow-y: auto; outline: 0;">
+                <div class="modal-dialog modal-dialog-centered" style="position: relative; width: auto; margin: 1.75rem auto; pointer-events: none; z-index: 1051;">
+                    <div style="position: relative; display: flex; flex-direction: column; width: 100%; pointer-events: auto; background-color: white; border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); overflow: hidden;">
+                        <div style="background: #e74a3b; padding: 1.5rem; position: relative;">
+                            <div style="display: flex; align-items: center;">
+                                <i class="fas fa-trash-alt" style="color: white; font-size: 1.5rem; margin-right: 1rem;"></i>
+                                <h5 style="color: white; font-weight: 300; margin: 0;">Delete Question</h5>
                             </div>
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <p class="card-text">{{ questionToDelete.text }}</p>
+                            <button type="button" class="btn-close btn-close-white" style="position: absolute; top: 1.25rem; right: 1.25rem;" @click="closeDeleteModal"></button>
+                        </div>
+                        <div style="padding: 1.5rem; background: white;" v-if="questionToDelete">
+                            <div style="margin-bottom: 1rem;">
+                                <p style="font-size: 1.1rem; color: #5a5c69;">
+                                    Are you sure you want to delete this question?
+                                </p>
+                                <div style="padding: 1rem; background-color: #fff4f4; border-left: 4px solid #e74a3b; margin-top: 1rem; border-radius: 5px;">
+                                    <p style="margin-bottom: 0; color: #e74a3b;">
+                                        <i class="fas fa-exclamation-triangle me-2"></i> Warning
+                                    </p>
+                                    <p style="margin-bottom: 0; color: #6e7d88; font-size: 0.9rem;">
+                                        This action cannot be undone. All student responses associated with this question will also be deleted.
+                                    </p>
+                                </div>
+                                
+                                <div style="margin-top: 1.5rem; padding: 1rem; background-color: #f8f9fc; border-radius: 8px;">
+                                    <h6 style="font-weight: 600; color: #4e73df; margin-bottom: 0.5rem;">Question to be deleted:</h6>
+                                    <p style="color: #5a5c69;">{{ questionToDelete.text }}</p>
+                                    
+                                    <div style="margin-top: 0.75rem; font-size: 0.85rem; color: #858796;">
+                                        <span style="font-weight: 600;">Options:</span> {{ questionToDelete.options.length }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
-                            <button type="button" class="btn btn-danger" @click="deleteQuestion" :disabled="loading">
-                                <span v-if="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <div style="padding: 1.5rem; background: white; border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: flex-end;">
+                            <button type="button" 
+                                    class="btn btn-light btn-lg" 
+                                    style="margin-right: 0.75rem; padding-left: 1.5rem; padding-right: 1.5rem;" 
+                                    @click="closeDeleteModal">
+                                Cancel
+                            </button>
+                            <button 
+                                type="button" 
+                                class="btn btn-danger btn-lg" 
+                                style="padding-left: 1.5rem; padding-right: 1.5rem; display: flex; align-items: center;" 
+                                @click="deleteQuestion" 
+                                :disabled="loading"
+                            >
+                                <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <i v-else class="fas fa-trash-alt me-2"></i>
                                 Delete Question
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-backdrop fade" :class="{ 'show': showDeleteModal }" v-if="showDeleteModal"></div>
         </div>
     `
 }

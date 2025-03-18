@@ -73,6 +73,7 @@ class Question(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
     quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
     options = db.relationship('Option', backref='question', lazy=True, cascade="all, delete-orphan")
@@ -83,6 +84,7 @@ class Option(db.Model):
     text = db.Column(db.String(255), nullable=False)
     is_correct = db.Column(db.Boolean, default=False)
     question_id = db.Column(db.Integer, db.ForeignKey('question.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class UserQuizAttempt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
