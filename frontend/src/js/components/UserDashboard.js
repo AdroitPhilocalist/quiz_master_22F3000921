@@ -88,18 +88,12 @@ export default {
         localStorage.removeItem('userName');
         localStorage.removeItem('userId');
         localStorage.removeItem('full_name');
-        
-        // Redirect to login page
         this.$router.push('/login');
       },
       viewProfile() {
-        // You can implement this later or show a modal
         alert('Profile view functionality will be implemented soon');
       },
-      
-      // Add settings method (placeholder for now)
       viewSettings() {
-        // You can implement this later or show a modal
         alert('Settings functionality will be implemented soon');
       }
   },
