@@ -26,6 +26,7 @@ question_fields = {
     'id': fields.Integer,
     'text': fields.String,
     'quiz_id': fields.Integer,
+    'created_at': fields.DateTime,
     'options': fields.List(fields.Nested(option_fields))
 }
 

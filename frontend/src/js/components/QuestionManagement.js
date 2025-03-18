@@ -580,7 +580,7 @@ export default {
                                             </div>
                                             
                                             <div style="font-size: 0.8rem; color: #858796;">
-                                                <i class="far fa-calendar-alt me-1"></i> Created: {{ formatDate(question) }}
+                                                <i class="far fa-calendar-alt me-1"></i> Created: {{ formatDate(question.created_at) }}
                                             </div>
                                         </div>
                                     </div>
