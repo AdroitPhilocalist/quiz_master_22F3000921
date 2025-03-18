@@ -15,6 +15,15 @@ export default {
       subjectToDelete: null,
     };
   },
+  mounted() {
+    // Initialize tooltips if bootstrap is available
+    if (typeof bootstrap !== 'undefined') {
+      const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+      tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+      });
+    }
+  },
   created() {
     this.fetchSubjects();
   },
