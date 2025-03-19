@@ -187,6 +187,11 @@ export default {
                     }
                 });
                 this.chapterName = response.data.name;
+                
+                // Store the chapter ID in case it's needed for navigation
+                if (response.data.id) {
+                    localStorage.setItem('lastChapterId', response.data.id);
+                }
             } catch (error) {
                 console.error('Failed to fetch chapter name:', error);
             }
@@ -343,7 +348,18 @@ export default {
         },
         
         goBack() {
-            this.$router.push(this.chapterId ? `/admin/chapters/${this.chapterId}` : '/admin/quizzes');
+            // First try to use the prop
+            if (this.chapterId) {
+                this.$router.push(`/admin/subjects/${this.chapterId}/chapters`);
+            } 
+            // If prop is not available, try to use the stored chapter ID
+            else if (localStorage.getItem('lastChapterId')) {
+                this.$router.push(`/admin/chapters/${localStorage.getItem('lastChapterId')}`);
+            }
+            // If all else fails, go to the general chapters page
+            else {
+                this.$router.push('/admin/chapters');
+            }
         },
         
         sortTable(field) {
