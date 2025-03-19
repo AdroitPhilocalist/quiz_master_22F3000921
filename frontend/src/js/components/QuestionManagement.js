@@ -203,6 +203,27 @@ export default {
                     }
                 });
                 this.quiz = response.data;
+                
+                // If chapter_id is missing, make an additional request to get it
+                if (!this.quiz.chapter_id) {
+                    console.warn("Chapter ID missing from quiz data, fetching from quiz list API");
+                    try {
+                        const quizListResponse = await axios.get('/api/quizzes', {
+                            headers: {
+                                'Authentication-Token': localStorage.getItem('token')
+                            }
+                        });
+                        const fullQuizData = quizListResponse.data.find(q => q.id === parseInt(this.quizId));
+                        if (fullQuizData && fullQuizData.chapter_id) {
+                            this.quiz.chapter_id = fullQuizData.chapter_id;
+                            console.log("Retrieved chapter_id:", this.quiz.chapter_id);
+                        }
+                    } catch (err) {
+                        console.error("Failed to fetch chapter_id from quiz list:", err);
+                    }
+                }
+                
+                console.log("Quiz data with chapter_id:", this.quiz);
             } catch (error) {
                 this.error = 'Failed to load quiz details';
                 console.error(error);
@@ -405,6 +426,7 @@ export default {
         },
         
         goBack() {
+            console.log(this.quiz);
             this.$router.push(`/admin/chapters/${this.quiz?.chapter_id}/quizzes`);
         },
         
@@ -423,7 +445,7 @@ export default {
         },
         
         formatDate(dateString) {
-            console.log(dateString);
+            // console.log(dateString);
             return new Date(dateString).toLocaleString();
         }
     },
