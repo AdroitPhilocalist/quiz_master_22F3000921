@@ -229,6 +229,10 @@ export default {
     viewChapters(subjectId) {
       this.$router.push(`/admin/subjects/${subjectId}/chapters`);
     },
+    goBack() {
+        this.$router.push(`/admin/`);
+      
+  },
   },
   template: `
   <div class="container-fluid py-5" style="font-family: 'Segoe UI', Roboto, Arial, sans-serif;">
@@ -236,9 +240,15 @@ export default {
           <div class="col-12">
               <!-- Header Section -->
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center;">
+                    <button @click="goBack" class="btn btn-outline-primary me-3" 
+                            style="border-radius: 50px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(78, 115, 223, 0.15); transition: all 0.3s ease;">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
                   <h2 style="font-weight: 700; color: #4e73df; margin: 0;">
                       <i class="fas fa-book-open me-2"></i>Subject Management
                   </h2>
+                  </div
                   <button class="btn btn-primary btn-lg" 
                           style="border-radius: 50px; padding: 0.5rem 1.5rem; box-shadow: 0 2px 10px rgba(78, 115, 223, 0.2); transition: all 0.3s ease;" 
                           @click="openAddModal">
