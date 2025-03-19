@@ -14,7 +14,9 @@ export default {
             quizCompleted: false,
             quizResults: null,
             showConfirmSubmit: false,
-            animating: false
+            animating: false,
+            showHint: false,
+            currentHint: null
         }
     },
     computed: {
