@@ -969,6 +969,7 @@ class UserDashboardAPI(Resource):
         scores = [a.score for a in completed_attempts if a.score is not None]
         avg_score = sum(scores) / len(scores) if scores else 0
         best_score = max(scores) if scores else 0
+        print("heloo")
         
         return {
             'user': {

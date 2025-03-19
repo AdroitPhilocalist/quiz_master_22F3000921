@@ -82,12 +82,12 @@ def register():
         db.session.rollback()
         return jsonify({"message": f"Error creating user: {str(e)}", "status": "error"}), 400
 
-# Protected routes with role-based access
-@app.route('/api/user/dashboard')
-@auth_required('token')
-@roles_required('user')
-def user_dashboard():
-    return jsonify({"message": "User dashboard access granted", "status": "success"})
+# # Protected routes with role-based access
+# @app.route('/api/user/dashboard')
+# @auth_required('token')
+# @roles_required('user')
+# def user_dashboard():
+#     return jsonify({"message": "User dashboard access granted", "status": "success"})
 
 # @app.route('/api/admin/dashboard')
 # @auth_required('token')

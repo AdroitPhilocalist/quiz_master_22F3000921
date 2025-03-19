@@ -37,7 +37,7 @@ export default {
         this.inProgressQuizzes = response.data.in_progress_quizzes;
         this.recommendedQuizzes = response.data.recommended_quizzes;
         this.subjects = response.data.subjects;
-        console.log(this.stats);
+        console.log(response.data);
         
       } catch (error) {
         this.error = "Failed to load dashboard data";
@@ -98,7 +98,7 @@ export default {
       }
   },
   template: `
-        <div class="container-fluid py-4">
+  <div class="container-fluid py-4">
         
             <div v-if="loading" class="text-center my-5">
                 <div class="spinner-border text-primary" role="status">
@@ -362,153 +362,277 @@ export default {
         </div>
     </div>
 </div>      
-                <!-- Main Content -->
-                <div class="row">
-                    <!-- Left Column -->
-                    <div class="col-lg-8">
-                        <!-- In Progress Quizzes -->
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 fw-bold">Continue Your Quizzes</h6>
+      
+      <!-- Main Content -->
+      <div class="row">
+          <!-- Left Column -->
+          <div class="col-lg-8">
+              <!-- In Progress Quizzes -->
+              <div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden; transition: all 0.3s ease;">
+                <div style="background: linear-gradient(135deg, #000DFF 0%, #6B73FF 100%); padding: 1.5rem; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                    <div style="position: absolute; bottom: -30px; left: 20px; width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                                <i class="fas fa-layer-group fa-lg" style="color: white;"></i>
                             </div>
-                            <div class="card-body">
-                                <div v-if="inProgressQuizzes.length === 0" class="text-center py-4">
-                                <i class="fas fa-hourglass-half fa-4x text-muted mb-3"></i>
-                                    <h5>No quizzes in progress</h5>
-                                    <p class="text-muted">Start a new quiz from the recommended section below.</p>
-                                </div>
-                                <div v-else class="table-responsive">
-                                    <table class="table align-middle">
-                                        <thead class="text-uppercase text-muted" style="font-size: 0.85rem;">
-                                            <tr>
-                                                <th>Quiz</th>
-                                                <th>Subject</th>
-                                                <th>Started</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr v-for="quiz in inProgressQuizzes" :key="quiz.id" class="animate__animated animate__fadeIn">
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-sm bg-gradient-info rounded-circle me-2">
-                                                            <span class="avatar-text">{{ quiz.title.charAt(0) }}</span>
-                                                        </div>
-                                                        <div>{{ quiz.title }}</div>
-                                                    </div>
-                                                </td>
-                                                <td>{{ quiz.subject }}</td>
-                                                <td>{{ formatDate(quiz.started_at) }}</td>
-                                                <td>
-                                                    <button class="btn btn-sm btn-primary" @click="continueQuiz(quiz.attempt_id)">
-                                                        <i class="fas fa-play-circle me-1"></i> Continue
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                            <h5 style="color: white; font-weight: 600; margin: 0;">Continue Your Learning Journey</h5>
                         </div>
-                        
-                        <!-- Recommended Quizzes -->
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-white py-3">
-                                <h6 class="mb-0 fw-bold">Recommended Quizzes</h6>
-                            </div>
-                            <div class="card-body">
-                                <div v-if="recommendedQuizzes.length === 0" class="text-center py-4">
-                                <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
-                                    <h5>You've completed all available quizzes!</h5>
-                                    <p class="text-muted">Check back later for new content.</p>
-                                </div>
-                                <div v-else class="row">
-                                    <div v-for="quiz in recommendedQuizzes" :key="quiz.id" class="col-md-6 mb-4 animate__animated animate__fadeIn">
-                                        <div class="card h-100 border-0 shadow-sm hover-card">
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                    <h5 class="card-title mb-0">{{ quiz.title }}</h5>
-                                                    <span class="badge bg-light text-dark">{{ quiz.question_count }} Questions</span>
+                        <span style="background-color: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+                            <i class="fas fa-bolt me-1"></i> IN PROGRESS
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="card-body" style="padding: 0;">
+                    <div v-if="inProgressQuizzes.length === 0" style="text-align: center; padding: 3rem 2rem; background: linear-gradient(to bottom, rgba(107, 115, 255, 0.05), rgba(255, 255, 255, 0));">
+                        <div style="width: 120px; height: 120px; background: rgba(0, 13, 255, 0.03); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: 0 10px 30px rgba(0, 13, 255, 0.1);">
+                            <i class="fas fa-hourglass-half fa-3x" style="color: #000DFF; opacity: 0.4;"></i>
+                        </div>
+                        <h5 style="font-weight: 600; color: #333; margin-bottom: 0.75rem;">No quizzes in progress</h5>
+                        <p style="color: #6c757d; max-width: 300px; margin: 0 auto;">Start a new quiz from the recommended section below to track your progress.</p>
+                        <button class="btn btn-primary mt-4" style="background: linear-gradient(135deg, #000DFF 0%, #6B73FF 100%); border: none; padding: 0.5rem 1.5rem; border-radius: 50px; box-shadow: 0 4px 15px rgba(0, 13, 255, 0.3); transition: all 0.3s ease;">
+                            <i class="fas fa-play-circle me-2"></i> Explore Quizzes
+                        </button>
+                    </div>
+                    
+                    <div v-else style="padding: 0 1rem;">
+                        <div class="row g-0" style="margin-top: -20px;">
+                            <div v-for="quiz in inProgressQuizzes" :key="quiz.id" class="col-12 animate__animated animate__fadeIn">
+                                <div style="background: white; border-radius: 12px; margin: 0.75rem 0; box-shadow: 0 5px 15px rgba(0,0,0,0.05); overflow: hidden; transition: all 0.3s ease; position: relative; border-left: 4px solid #000DFF;" 
+                                     onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 12px 25px rgba(0,0,0,0.1)';" 
+                                     onmouseout="this.style.transform=''; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.05)';">
+                                    
+                                    <div class="row g-0 align-items-center">
+                                        <div class="col-md-8 p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #000DFF, #6B73FF); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px; box-shadow: 0 5px 15px rgba(0, 13, 255, 0.2);">
+                                                    <span style="color: white; font-weight: 600; font-size: 1.1rem;">{{ quiz.title.charAt(0) }}</span>
                                                 </div>
-                                                <p class="card-text text-muted mb-3">
-                                                    <i class="fas fa-book-open me-1"></i> {{ quiz.subject }} - {{ quiz.chapter }}
-                                                </p>
-                                                <p class="card-text text-muted mb-3">
-                                                    <i class="fas fa-clock me-1"></i> {{ quiz.time_limit }} minutes
-                                                </p>
-                                                <button class="btn btn-primary w-100" @click="startQuiz(quiz.id)">
-                                                    <i class="fas fa-play-circle me-1"></i> Start Quiz
-                                                </button>
+                                                <div>
+                                                    <h6 style="font-weight: 600; margin: 0; color: #333; font-size: 1.1rem;">{{ quiz.title }}</h6>
+                                                    <div class="d-flex align-items-center mt-1">
+                                                        <span style="color: #6c757d; font-size: 0.85rem; margin-right: 12px;">
+                                                            <i class="fas fa-book me-1" style="color: #000DFF;"></i> {{ quiz.subject }}
+                                                        </span>
+                                                        <span style="color: #6c757d; font-size: 0.85rem;">
+                                                            <i class="far fa-calendar-alt me-1" style="color: #000DFF;"></i> {{ formatDate(quiz.started_at) }}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
+                                        </div>
+                                        <div class="col-md-4 p-3 text-end">
+                                            <div style="height: 6px; background-color: #f0f0f0; border-radius: 3px; margin-bottom: 12px; position: relative; overflow: hidden;">
+                                            <div style="position: absolute; top: 0; left: 0; height: 100%; width: 35%; background: linear-gradient(to right, #000DFF, #6B73FF);"></div>
+                                            </div>
+                                            <button @click="continueQuiz(quiz.attempt_id)" 
+                                                    style="background: linear-gradient(135deg, #000DFF 0%, #6B73FF 100%); color: white; border: none; padding: 8px 20px; border-radius: 50px; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 13, 255, 0.2);"
+                                                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0, 13, 255, 0.3)';" 
+                                                    onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 15px rgba(0, 13, 255, 0.2)';">
+                                                <i class="fas fa-play-circle me-1"></i> Continue
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Right Column -->
-                    <div class="col-lg-4">
-                        <!-- Recent Results -->
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-white py-3">
-                                <h6 class="mb-0 fw-bold">Recent Results</h6>
-                            </div>
-                            <div class="card-body p-0">
-                                <div v-if="recentAttempts.length === 0" class="text-center py-4">
-                                <i class="fas fa-chart-bar fa-4x text-muted mb-3"></i>
-                                    <h5>No quiz results yet</h5>
-                                    <p class="text-muted">Complete a quiz to see your results here.</p>
-                                </div>
-                                <ul v-else class="list-group list-group-flush">
-                                    <li v-for="attempt in recentAttempts" :key="attempt.id" 
-                                        class="list-group-item d-flex justify-content-between align-items-center p-3 animate__animated animate__fadeIn">
-                                        <div>
-                                            <h6 class="mb-1">{{ attempt.quiz_title }}</h6>
-                                            <p class="text-muted small mb-0">{{ attempt.subject_name }} - {{ attempt.chapter_name }}</p>
-                                            <p class="text-muted small mb-0">{{ formatDate(attempt.completed_at) }}</p>
-                                        </div>
-                                        <div class="text-end">
-                                            <h5 :class="getScoreClass(attempt.score)">{{ attempt.score }}%</h5>
-                                            <button class="btn btn-sm btn-outline-primary" @click="viewResult(attempt.id)">
-                                                <i class="fas fa-eye me-1"></i> View
-                                            </button>
-                                        </div>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                        
-                        <!-- Browse Subjects -->
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-white py-3">
-                                <h6 class="mb-0 fw-bold">Browse by Subject</h6>
-                            </div>
-                            <div class="card-body p-0">
-                                <div v-if="subjects.length === 0" class="text-center py-4">
-                                <i class="fas fa-book fa-4x text-muted mb-3"></i>
-                                    <h5>No subjects available</h5>
-                                    <p class="text-muted">Check back later for new content.</p>
-                                </div>
-                                <ul v-else class="list-group list-group-flush">
-                                    <li v-for="subject in subjects" :key="subject.id" 
-                                        class="list-group-item p-3 animate__animated animate__fadeIn">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h6 class="mb-1">{{ subject.name }}</h6>
-                                                <p class="text-muted small mb-0">{{ subject.chapters.length }} chapters</p>
-                                            </div>
-                                            <button class="btn btn-sm btn-outline-primary" @click="browseSubject(subject.id)">
-                                                <i class="fas fa-arrow-right"></i>
-                                            </button>
-                                        </div>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-            </div>
-        </div>
-    `,
-};
+              </div>
+              
+              <!-- Recommended Quizzes -->
+              <div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden;">
+                  <div style="background: linear-gradient(135deg, #1cc88a 0%, #0f9e67 100%); padding: 1.5rem; position: relative; overflow: hidden;">
+                      <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                      <div style="position: absolute; bottom: -30px; left: 20px; width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+                      
+                      <div class="d-flex justify-content-between align-items-center">
+                          <div class="d-flex align-items-center">
+                              <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                                  <i class="fas fa-lightbulb fa-lg" style="color: white;"></i>
+                              </div>
+                              <h5 style="color: white; font-weight: 600; margin: 0;">Recommended For You</h5>
+                          </div>
+                          <span style="background-color: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+                              <i class="fas fa-star me-1"></i> PERSONALIZED
+                          </span>
+                      </div>
+                  </div>
+                  
+                  <div style="background: linear-gradient(to bottom, rgba(28, 200, 138, 0.05), rgba(255, 255, 255, 0)); padding: 1.5rem;">
+                      <div v-if="recommendedQuizzes.length === 0" style="text-align: center; padding: 3rem 2rem;">
+                          <div style="width: 120px; height: 120px; background: rgba(28, 200, 138, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                              <i class="fas fa-check-circle fa-3x" style="color: #1cc88a; opacity: 0.5;"></i>
+                          </div>
+                          <h5 style="font-weight: 600; color: #333; margin-bottom: 0.75rem;">You've completed all available quizzes!</h5>
+                          <p style="color: #6c757d; max-width: 350px; margin: 0 auto;">Check back soon as we're constantly adding new content for you.</p>
+                      </div>
+                      
+                      <div v-else class="row">
+                          <div v-for="quiz in recommendedQuizzes" :key="quiz.id" class="col-md-6 mb-4 animate__animated animate__fadeIn">
+                              <div style="background: white; border-radius: 16px; box-shadow: 0 8px 25px rgba(0,0,0,0.05); overflow: hidden; height: 100%; transition: all 0.3s ease; position: relative;"
+                                   onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 20px 40px rgba(0,0,0,0.1)';" 
+                                   onmouseout="this.style.transform=''; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.05)';">
+                                  <div style="padding: 20px; position: relative;">
+                                      <div style="position: absolute; top: 15px; right: 15px; background-color: rgba(28, 200, 138, 0.1); color: #1cc88a; padding: 5px 12px; border-radius: 30px; font-size: 0.75rem; font-weight: 600;">
+                                          <i class="fas fa-question-circle me-1"></i> {{ quiz.question_count }} Questions
+                                      </div>
+                                      
+                                      <h5 style="font-weight: 700; margin-top: 25px; margin-bottom: 15px; color: #333; font-size: 1.2rem;">{{ quiz.title }}</h5>
+                                      
+                                      <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                                          <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #36b9cc, #1a8a98); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+                                              <i class="fas fa-book-open" style="color: white; font-size: 0.9rem;"></i>
+                                          </div>
+                                          <div>
+                                              <span style="color: #495057; font-size: 0.9rem; display: block; font-weight: 500;">{{ quiz.subject }} - {{ quiz.chapter }}</span>
+                                          </div>
+                                      </div>
+                                      
+                                      <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                                          <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #f6c23e, #dda20a); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+                                              <i class="fas fa-clock" style="color: white; font-size: 0.9rem;"></i>
+                                          </div>
+                                          <div>
+                                              <span style="color: #495057; font-size: 0.9rem; display: block; font-weight: 500;">{{ quiz.time_limit }} minutes</span>
+                                          </div>
+                                      </div>
+                                      
+                                      <button @click="startQuiz(quiz.id)" 
+                                              style="background: linear-gradient(135deg, #1cc88a 0%, #0f9e67 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; width: 100%; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(28, 200, 138, 0.2);"
+                                              onmouseover="this.style.boxShadow='0 8px 25px rgba(28, 200, 138, 0.3)';" 
+                                              onmouseout="this.style.boxShadow='0 4px 15px rgba(28, 200, 138, 0.2)';">
+                                          <i class="fas fa-play-circle me-2"></i> Start Quiz
+                                      </button>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          
+          <!-- Right Column -->
+          <div class="col-lg-4">
+              <!-- Recent Results -->
+              <div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden;">
+                  <div style="background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); padding: 1.5rem; position: relative; overflow: hidden;">
+                      <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                      <div style="position: absolute; bottom: -30px; left: 20px; width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+                      
+                      <div class="d-flex justify-content-between align-items-center">
+                          <div class="d-flex align-items-center">
+                              <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                                  <i class="fas fa-chart-bar fa-lg" style="color: white;"></i>
+                              </div>
+                              <h5 style="color: white; font-weight: 600; margin: 0;">Recent Results</h5>
+                          </div>
+                          <span style="background-color: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+                              <i class="fas fa-history me-1"></i> HISTORY
+                          </span>
+                      </div>
+                  </div>
+                  
+                  <div class="card-body" style="padding: 0;">
+                      <div v-if="recentAttempts.length === 0" style="text-align: center; padding: 3rem 2rem; background: linear-gradient(to bottom, rgba(78, 115, 223, 0.05), rgba(255, 255, 255, 0));">
+                          <div style="width: 120px; height: 120px; background: rgba(78, 115, 223, 0.03); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: 0 10px 30px rgba(78, 115, 223, 0.1);">
+                              <i class="fas fa-chart-bar fa-3x" style="color: #4e73df; opacity: 0.4;"></i>
+                          </div>
+                          <h5 style="font-weight: 600; color: #333; margin-bottom: 0.75rem;">No quiz results yet</h5>
+                          <p style="color: #6c757d; max-width: 300px; margin: 0 auto;">Complete a quiz to see your results here.</p>
+                      </div>
+                      
+                      <div v-else>
+                          <div v-for="attempt in recentAttempts" :key="attempt.id" class="animate__animated animate__fadeIn" style="padding: 1rem 1.25rem; border-bottom: 1px solid rgba(0,0,0,0.05); transition: all 0.3s ease;"
+                               onmouseover="this.style.backgroundColor='rgba(78, 115, 223, 0.02)'" 
+                               onmouseout="this.style.backgroundColor='transparent'">
+                              <div class="d-flex justify-content-between align-items-center">
+                                  <div>
+                                      <h6 style="font-weight: 600; margin: 0; color: #333; font-size: 1rem;">{{ attempt.quiz_title }}</h6>
+                                      <div class="d-flex align-items-center mt-1">
+                                          <span style="color: #6c757d; font-size: 0.8rem; margin-right: 12px;">
+                                              <i class="fas fa-book me-1" style="color: #4e73df;"></i> {{ attempt.subject_name }}
+                                          </span>
+                                          <span style="color: #6c757d; font-size: 0.8rem;">
+                                              <i class="far fa-calendar-alt me-1" style="color: #4e73df;"></i> {{ formatDate(attempt.completed_at) }}
+                                          </span>
+                                      </div>
+                                  </div>
+                                  <div class="text-end">
+                                      <h5 :class="getScoreClass(attempt.score)" style="font-weight: 700; margin-bottom: 5px;">{{ attempt.score }}%</h5>
+                                      <button @click="viewResult(attempt.id)" 
+                                              style="background: transparent; color: #4e73df; border: 1px solid #4e73df; padding: 4px 12px; border-radius: 50px; font-weight: 600; font-size: 0.75rem; transition: all 0.3s ease;"
+                                              onmouseover="this.style.background='#4e73df'; this.style.color='white';" 
+                                              onmouseout="this.style.background='transparent'; this.style.color='#4e73df';">
+                                          <i class="fas fa-eye me-1"></i> View
+                                      </button>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+    
+              <!-- Browse Subjects -->
+              <div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden;">
+                  <div style="background: linear-gradient(135deg, #f6c23e 0%, #dda20a 100%); padding: 1.5rem; position: relative; overflow: hidden;">
+                      <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                      <div style="position: absolute; bottom: -30px; left: 20px; width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+                      
+                      <div class="d-flex justify-content-between align-items-center">
+                          <div class="d-flex align-items-center">
+                              <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                                  <i class="fas fa-book fa-lg" style="color: white;"></i>
+                              </div>
+                              <h5 style="color: white; font-weight: 600; margin: 0;">Browse by Subject</h5>
+                          </div>
+                          <span style="background-color: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+                              <i class="fas fa-th-list me-1"></i> CATALOG
+                          </span>
+                      </div>
+                  </div>
+                  
+                  <div class="card-body" style="padding: 0;">
+                      <div v-if="subjects.length === 0" style="text-align: center; padding: 3rem 2rem; background: linear-gradient(to bottom, rgba(246, 194, 62, 0.05), rgba(255, 255, 255, 0));">
+                          <div style="width: 120px; height: 120px; background: rgba(246, 194, 62, 0.03); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: 0 10px 30px rgba(246, 194, 62, 0.1);">
+                              <i class="fas fa-book fa-3x" style="color: #f6c23e; opacity: 0.4;"></i>
+                          </div>
+                          <h5 style="font-weight: 600; color: #333; margin-bottom: 0.75rem;">No subjects available</h5>
+                          <p style="color: #6c757d; max-width: 300px; margin: 0 auto;">Check back later for new content.</p>
+                      </div>
+                      
+                      <div v-else>
+                          <div v-for="subject in subjects" :key="subject.id" class="animate__animated animate__fadeIn" style="padding: 1rem 1.25rem; border-bottom: 1px solid rgba(0,0,0,0.05); transition: all 0.3s ease;"
+                               onmouseover="this.style.backgroundColor='rgba(246, 194, 62, 0.02)'" 
+                               onmouseout="this.style.backgroundColor='transparent'">
+                              <div class="d-flex justify-content-between align-items-center">
+                                  <div class="d-flex align-items-center">
+                                      <div style="width: 42px; height: 42px; background: linear-gradient(135deg, #f6c23e, #dda20a); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px; box-shadow: 0 4px 10px rgba(246, 194, 62, 0.2);">
+                                          <span style="color: white; font-weight: 600; font-size: 1rem;">{{ subject.name.charAt(0) }}</span>
+                                      </div>
+                                      <div>
+                                          <h6 style="font-weight: 600; margin: 0; color: #333; font-size: 1rem;">{{ subject.name }}</h6>
+                                          <span style="color: #6c757d; font-size: 0.8rem;">
+                                              <i class="fas fa-bookmark me-1" style="color: #f6c23e;"></i> {{ subject.chapters.length }} chapters
+                                          </span>
+                                      </div>
+                                  </div>
+                                  <button @click="browseSubject(subject.id)" 
+                                          style="background: transparent; color: #f6c23e; border: 1px solid #f6c23e; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;"
+                                          onmouseover="this.style.background='#f6c23e'; this.style.color='white';" 
+                                          onmouseout="this.style.background='transparent'; this.style.color='#f6c23e';">
+                                      <i class="fas fa-arrow-right"></i>
+                                  </button>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+    </div>`
+                                                  }
