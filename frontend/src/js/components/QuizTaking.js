@@ -53,6 +53,12 @@ export default {
             if (this.timeLeftPercentage > 50) return 'bg-success';
             if (this.timeLeftPercentage > 25) return 'bg-warning';
             return 'bg-danger';
+        },
+        timeWarning() {
+            return this.timeLeft < 300; // Less than 5 minutes
+        },
+        timeCritical() {
+            return this.timeLeft < 60; // Less than 1 minute
         }
     },
     created() {
