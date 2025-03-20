@@ -1107,8 +1107,10 @@ class QuizSubmitAPI(Resource):
             selected_option_id = answers.get(str(question.id))
             
             if selected_option_id:
+                print(f"Selected option ID: {selected_option_id['option_id']}")
                 # Check if the selected option is correct
-                selected_option = Option.query.get(selected_option_id)
+                answered_option_id=selected_option_id['option_id']
+                selected_option = Option.query.get(answered_option_id)
                 if selected_option and selected_option.question_id == question.id and selected_option.is_correct:
                     correct_count += 1
             
@@ -1117,7 +1119,7 @@ class QuizSubmitAPI(Resource):
                 user_answer = UserAnswer(
                     attempt_id=attempt.id,
                     question_id=question.id,
-                    selected_option_id=selected_option_id
+                    option_id=answered_option_id
                 )
                 db.session.add(user_answer)
         
@@ -1189,7 +1191,7 @@ class AttemptAnswersAPI(Resource):
         
         # Get user's answers
         user_answers = UserAnswer.query.filter_by(attempt_id=attempt_id).all()
-        user_answer_dict = {answer.question_id: answer.selected_option_id for answer in user_answers}
+        user_answer_dict = {answer.question_id: answer.option_id for answer in user_answers}
         
         question_data = []
         for question in questions:
