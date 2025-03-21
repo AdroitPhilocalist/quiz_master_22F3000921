@@ -248,11 +248,11 @@ export default {
                   <h2 style="font-weight: 700; color: #4e73df; margin: 0;">
                       <i class="fas fa-book-open me-2"></i>Subject Management
                   </h2>
-                  </div
+                  </div>
                   <button class="btn btn-primary btn-lg" 
-                          style="border-radius: 50px; padding: 0.5rem 1.5rem; box-shadow: 0 2px 10px rgba(78, 115, 223, 0.2); transition: all 0.3s ease;" 
-                          @click="openAddModal">
-                      <i class="fas fa-plus me-2"></i> Add New Subject
+                                  style="border-radius: 50px; padding: 0.75rem 1.75rem; box-shadow: 0 2px 15px rgba(78, 115, 223, 0.2);" 
+                                  @click="openAddModal">
+                              <i class="fas fa-plus me-2"></i> Add Subject
                   </button>
               </div>
               
