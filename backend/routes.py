@@ -630,3 +630,76 @@ def user_statistics():
 #     except Exception as e:
 #         app.logger.error(f"Error in user dashboard: {str(e)}")
 #         return jsonify({"message": f"Error retrieving dashboard data: {str(e)}", "status": "error"}), 500
+
+# Add these routes to your existing routes.py file
+
+@app.route('/api/user/export-quiz-data', methods=['POST'])
+@auth_required('token')
+def export_user_quiz_data_route():
+    """Trigger export of user's quiz data"""
+    try:
+        user_id = current_user.id
+        
+        # Start the Celery task
+        task = export_user_quiz_data.delay(user_id)
+        
+        return jsonify({
+            "message": "Export started. You will receive an email when it's ready.",
+            "task_id": task.id,
+            "status": "success"
+        })
+    except Exception as e:
+        app.logger.error(f"Error starting export: {str(e)}")
+        return jsonify({"message": f"Error starting export: {str(e)}", "status": "error"}), 500
+
+@app.route('/api/admin/export-quiz-data', methods=['POST'])
+@auth_required('token')
+@roles_required('admin')
+def export_admin_quiz_data_route():
+    """Trigger export of all users' quiz data for admin"""
+    try:
+        # Start the Celery task
+        task = export_admin_quiz_data.delay()
+        
+        return jsonify({
+            "message": "Export started. You will receive an email when it's ready.",
+            "task_id": task.id,
+            "status": "success"
+        })
+    except Exception as e:
+        app.logger.error(f"Error starting export: {str(e)}")
+        return jsonify({"message": f"Error starting export: {str(e)}", "status": "error"}), 500
+
+@app.route('/api/user/notification-settings', methods=['GET', 'PUT'])
+@auth_required('token')
+def user_notification_settings():
+    """Get or update user notification settings"""
+    user_id = current_user.id
+    user = User.query.get(user_id)
+    
+    if request.method == 'GET':
+        return jsonify({
+            "email_notifications": user.email_notifications if hasattr(user, 'email_notifications') else True,
+            "gchat_webhook": user.gchat_webhook if hasattr(user, 'gchat_webhook') else "",
+            "reminder_time": user.reminder_time if hasattr(user, 'reminder_time') else "18:00",
+            "status": "success"
+        })
+    
+    elif request.method == 'PUT':
+        data = request.get_json()
+        
+        if 'email_notifications' in data:
+            user.email_notifications = data['email_notifications']
+        
+        if 'gchat_webhook' in data:
+            user.gchat_webhook = data['gchat_webhook']
+        
+        if 'reminder_time' in data:
+            user.reminder_time = data['reminder_time']
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Notification settings updated successfully",
+            "status": "success"
+        })
