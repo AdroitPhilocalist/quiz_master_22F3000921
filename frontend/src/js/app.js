@@ -13,6 +13,8 @@ import QuestionManagement from './components/QuestionManagement.js';
 import AllChaptersManagement from './components/AllChaptersManagement.js';
 import AllQuizzesManagement from './components/AllQuizzesManagement.js';
 import UserManagement from './components/UserManagement.js';
+import AdminStatistics from './components/AdminStatistics.js';
+import UserStatistics from './components/UserStatistics.js';
 // import { createRouter } from 'vue-router';
 const routes = [
     { path: '/', redirect: '/login' },
@@ -66,10 +68,20 @@ const routes = [
         component: UserManagement,
         meta: { requiresAuth: true, requiresAdmin: true }
     },
+    {
+        path: '/admin/analytics',
+        component: AdminStatistics,
+        meta: { requiresAuth: true, requiresAdmin: true }
+    },
     { 
         path: '/user', 
         component: UserDashboard,
         meta: { requiresAuth: true, role: 'user' }
+    },
+    {
+        path: '/user/analytics',
+        component: UserStatistics,
+        meta: { requiresAuth: true, requiresAdmin: true }
     },
     { path: '/quiz/:quizId', component: QuizTaking, props: true, meta: { requiresAuth: true } },
     { path: '/quiz-result/:attemptId', component: QuizResult, props: true, meta: { requiresAuth: true } },

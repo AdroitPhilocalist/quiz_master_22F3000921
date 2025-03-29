@@ -11,6 +11,7 @@ class User(db.Model, UserMixin):
     full_name = db.Column(db.String, nullable=True)
     qualification = db.Column(db.String, nullable=True)
     date_of_birth = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     # Flask security specific
     fs_uniquifier = db.Column(db.String, unique=True, nullable=False)
     active = db.Column(db.Boolean, default=True)
