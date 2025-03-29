@@ -4,6 +4,9 @@ from backend.models import db,User,Role
 from flask_security import Security,SQLAlchemyUserDatastore,auth_required,hash_password
 from backend.resources import *
 from datetime import datetime
+# Add these imports at the top
+from flask_caching import Cache
+from backend.celery_config import make_celery
 
 def createApp():
     app= Flask(__name__,template_folder='frontend',static_folder='frontend',static_url_path='/static')
@@ -20,6 +23,10 @@ def createApp():
     return app
 
 app=createApp()
+cache = Cache(app)
+celery = make_celery(app)
+app.cache = cache
+app.celery = celery
 with app.app_context():
     db.create_all()
     app.security.datastore.find_or_create_role(name = "admin", description = "Superuser of app")

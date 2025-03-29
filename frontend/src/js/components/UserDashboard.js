@@ -90,6 +90,9 @@ export default {
         localStorage.removeItem('full_name');
         this.$router.push('/login');
       },
+      viewStatistics() {
+        this.$router.push('/user/analytics');
+      },
       viewProfile() {
         alert('Profile view functionality will be implemented soon');
       },
@@ -165,6 +168,10 @@ export default {
                             <a class="dropdown-item" href="#" @click.prevent="viewProfile">
                                 <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
                                 Profile
+                            </a>
+                            <a class="dropdown-item" href="#" @click.prevent="viewStatistics">
+                                <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
+                                Statistics
                             </a>
                             <a class="dropdown-item" href="#" @click.prevent="viewSettings">
                                 <i class="fas fa-cogs fa-sm fa-fw me-2 text-gray-400"></i>

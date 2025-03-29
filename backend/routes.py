@@ -308,13 +308,16 @@ def user_statistics():
         # Quiz attempt statistics
         user_attempts = UserQuizAttempt.query.filter_by(user_id=user_id).all()
         total_attempted = len(user_attempts)
-        completed_attempts = UserQuizAttempt.query.filter_by(user_id=user_id, is_completed=True).count()
+        completed_attempts = UserQuizAttempt.query.filter(
+    UserQuizAttempt.completed_at != None,
+    UserQuizAttempt.user_id == user_id
+).count()
         in_progress = total_attempted - completed_attempts
         
         # Calculate average score
         completed_with_score = UserQuizAttempt.query.filter(
             UserQuizAttempt.user_id == user_id,
-            UserQuizAttempt.is_completed == True,
+            UserQuizAttempt.completed_at != None,
             UserQuizAttempt.score.isnot(None)
         ).all()
         
@@ -334,9 +337,9 @@ def user_statistics():
         score_history = []
         recent_attempts = UserQuizAttempt.query.filter(
             UserQuizAttempt.user_id == user_id,
-            UserQuizAttempt.is_completed == True,
+            UserQuizAttempt.completed_at != None,
             UserQuizAttempt.score.isnot(None)
-        ).order_by(UserQuizAttempt.created_at.desc()).limit(10).all()
+        ).order_by(UserQuizAttempt.started_at.desc()).limit(10).all()
         
         for attempt in recent_attempts:
             quiz = Quiz.query.get(attempt.quiz_id)
@@ -345,7 +348,7 @@ def user_statistics():
                     'quiz_id': quiz.id,
                     'quiz_title': quiz.title,
                     'score': attempt.score,
-                    'date': attempt.created_at.strftime('%Y-%m-%d')
+                    'date': attempt.started_at.strftime('%Y-%m-%d')
                 })
         
         # Get subject performance
@@ -360,7 +363,7 @@ def user_statistics():
                 .filter(
                     Chapter.subject_id == subject.id,
                     UserQuizAttempt.user_id == user_id,
-                    UserQuizAttempt.is_completed == True,
+                    UserQuizAttempt.completed_at != None,
                     UserQuizAttempt.score.isnot(None)
                 ).all()
             
@@ -390,7 +393,7 @@ def user_statistics():
         # Get recent attempts with more details
         recent_detailed_attempts = []
         all_recent_attempts = UserQuizAttempt.query.filter_by(user_id=user_id)\
-            .order_by(UserQuizAttempt.created_at.desc()).limit(5).all()
+            .order_by(UserQuizAttempt.started_at.desc()).limit(5).all()
         
         for attempt in all_recent_attempts:
             quiz = Quiz.query.get(attempt.quiz_id)
@@ -399,10 +402,10 @@ def user_statistics():
                     'id': attempt.id,
                     'quiz_id': quiz.id,
                     'quiz_title': quiz.title,
-                    'date': attempt.created_at.strftime('%Y-%m-%d'),
+                    'date': attempt.started_at.strftime('%Y-%m-%d'),
                     'score': attempt.score if attempt.score is not None else 'N/A',
                     'time_spent': attempt.time_spent or 0,
-                    'status': 'completed' if attempt.is_completed else 'in_progress'
+                    'status': 'completed' if attempt.UserQuizAttempt.completed_at != None else 'in_progress'
                 })
         
         # Progress statistics
@@ -427,8 +430,8 @@ def user_statistics():
             month_name = datetime.strptime(str(month), "%m").strftime("%b")
             count = UserQuizAttempt.query.filter(
                 UserQuizAttempt.user_id == user_id,
-                extract('month', UserQuizAttempt.created_at) == month,
-                extract('year', UserQuizAttempt.created_at) == year
+                extract('month', UserQuizAttempt.started_at) == month,
+                extract('year', UserQuizAttempt.started_at) == year
             ).count()
             monthly_activity.append({'month': month_name, 'count': count})
         
@@ -441,7 +444,7 @@ def user_statistics():
         for i, day in enumerate(weekdays):
             count = UserQuizAttempt.query.filter(
                 UserQuizAttempt.user_id == user_id,
-                extract('dow', UserQuizAttempt.created_at) == i
+                extract('dow', UserQuizAttempt.started_at) == i
             ).count()
             weekday_activity.append({'day': day, 'count': count})
         
@@ -482,148 +485,148 @@ def user_statistics():
         return jsonify({"message": f"Error retrieving statistics: {str(e)}", "status": "error"}), 500
 
 
-@app.route('/api/user/dashboard', methods=['GET'])
-@auth_required('token')
-def user_dashboard():
-    """Get user dashboard data including stats, recent attempts, and recommended quizzes"""
-    try:
-        user_id = current_user.id
+# @app.route('/api/user/dashboard', methods=['GET'])
+# @auth_required('token')
+# def user_dashboard():
+#     """Get user dashboard data including stats, recent attempts, and recommended quizzes"""
+#     try:
+#         user_id = current_user.id
         
-        # Get user info
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({"message": "User not found", "status": "error"}), 404
+#         # Get user info
+#         user = User.query.get(user_id)
+#         if not user:
+#             return jsonify({"message": "User not found", "status": "error"}), 404
         
-        # Basic stats
-        total_attempts = UserQuizAttempt.query.filter_by(user_id=user_id).count()
-        completed_attempts = UserQuizAttempt.query.filter(UserQuizAttempt.completed_at != None).count()
-        in_progress_count = total_attempts - completed_attempts
+#         # Basic stats
+#         total_attempts = UserQuizAttempt.query.filter_by(user_id=user_id).count()
+#         completed_attempts = UserQuizAttempt.query.filter(UserQuizAttempt.completed_at != None).count()
+#         in_progress_count = total_attempts - completed_attempts
         
-        # Calculate average score
-        avg_score_result = db.session.query(func.avg(UserQuizAttempt.score)).filter(
-            UserQuizAttempt.user_id == user_id,
-            UserQuizAttempt.completed_at != None,
-            UserQuizAttempt.score.isnot(None)
-        ).scalar()
-        average_score = round(avg_score_result) if avg_score_result else 0
+#         # Calculate average score
+#         avg_score_result = db.session.query(func.avg(UserQuizAttempt.score)).filter(
+#             UserQuizAttempt.user_id == user_id,
+#             UserQuizAttempt.completed_at != None,
+#             UserQuizAttempt.score.isnot(None)
+#         ).scalar()
+#         average_score = round(avg_score_result) if avg_score_result else 0
         
-        # Get recent attempts
-        recent_attempts = []
-        attempts = UserQuizAttempt.query.filter_by(user_id=user_id).order_by(UserQuizAttempt.created_at.desc()).limit(5).all()
+#         # Get recent attempts
+#         recent_attempts = []
+#         attempts = UserQuizAttempt.query.filter_by(user_id=user_id).order_by(UserQuizAttempt.created_at.desc()).limit(5).all()
         
-        for attempt in attempts:
-            quiz = Quiz.query.get(attempt.quiz_id)
-            if quiz:
-                chapter = Chapter.query.get(quiz.chapter_id)
-                subject = Subject.query.get(chapter.subject_id) if chapter else None
+#         for attempt in attempts:
+#             quiz = Quiz.query.get(attempt.quiz_id)
+#             if quiz:
+#                 chapter = Chapter.query.get(quiz.chapter_id)
+#                 subject = Subject.query.get(chapter.subject_id) if chapter else None
                 
-                recent_attempts.append({
-                    'id': attempt.id,
-                    'quiz_id': quiz.id,
-                    'quiz_title': quiz.title,
-                    'subject': subject.name if subject else 'Unknown',
-                    'date': attempt.created_at.strftime('%Y-%m-%d'),
-                    'score': attempt.score if attempt.score is not None else None,
-                    'is_completed': attempt.is_completed,
-                    'time_spent': attempt.time_spent or 0
-                })
+#                 recent_attempts.append({
+#                     'id': attempt.id,
+#                     'quiz_id': quiz.id,
+#                     'quiz_title': quiz.title,
+#                     'subject': subject.name if subject else 'Unknown',
+#                     'date': attempt.created_at.strftime('%Y-%m-%d'),
+#                     'score': attempt.score if attempt.score is not None else None,
+#                     'is_completed': 'true' if attempt.UserQuizAttempt.completed_at != None else 'false',
+#                     'time_spent': attempt.time_spent or 0
+#                 })
         
-        # Get in-progress quizzes
-        in_progress_quizzes = []
-        in_progress = UserQuizAttempt.query.filter_by(user_id=user_id, is_completed=False).all()
+#         # Get in-progress quizzes
+#         in_progress_quizzes = []
+#         in_progress = UserQuizAttempt.query.filter_by(UserQuizAttempt.completed_at != None,user_id=user_id).all()
         
-        for attempt in in_progress:
-            quiz = Quiz.query.get(attempt.quiz_id)
-            if quiz:
-                chapter = Chapter.query.get(quiz.chapter_id)
-                subject = Subject.query.get(chapter.subject_id) if chapter else None
+#         for attempt in in_progress:
+#             quiz = Quiz.query.get(attempt.quiz_id)
+#             if quiz:
+#                 chapter = Chapter.query.get(quiz.chapter_id)
+#                 subject = Subject.query.get(chapter.subject_id) if chapter else None
                 
-                # Calculate progress percentage
-                total_questions = Question.query.filter_by(quiz_id=quiz.id).count()
-                answered_questions = UserAnswer.query.filter_by(attempt_id=attempt.id).count()
-                progress_percent = round((answered_questions / total_questions) * 100) if total_questions > 0 else 0
+#                 # Calculate progress percentage
+#                 total_questions = Question.query.filter_by(quiz_id=quiz.id).count()
+#                 answered_questions = UserAnswer.query.filter_by(attempt_id=attempt.id).count()
+#                 progress_percent = round((answered_questions / total_questions) * 100) if total_questions > 0 else 0
                 
-                in_progress_quizzes.append({
-                    'attempt_id': attempt.id,
-                    'quiz_id': quiz.id,
-                    'title': quiz.title,
-                    'subject': subject.name if subject else 'Unknown',
-                    'started_at': attempt.created_at.strftime('%Y-%m-%d'),
-                    'progress': progress_percent,
-                    'time_spent': attempt.time_spent or 0,
-                    'time_limit': quiz.time_limit
-                })
+#                 in_progress_quizzes.append({
+#                     'attempt_id': attempt.id,
+#                     'quiz_id': quiz.id,
+#                     'title': quiz.title,
+#                     'subject': subject.name if subject else 'Unknown',
+#                     'started_at': attempt.created_at.strftime('%Y-%m-%d'),
+#                     'progress': progress_percent,
+#                     'time_spent': attempt.time_spent or 0,
+#                     'time_limit': quiz.time_limit
+#                 })
         
-        # Get recommended quizzes based on user's history
-        # For simplicity, recommend quizzes from subjects the user has attempted before
-        attempted_quiz_ids = [attempt.quiz_id for attempt in UserQuizAttempt.query.filter_by(user_id=user_id).all()]
+#         # Get recommended quizzes based on user's history
+#         # For simplicity, recommend quizzes from subjects the user has attempted before
+#         attempted_quiz_ids = [attempt.quiz_id for attempt in UserQuizAttempt.query.filter_by(user_id=user_id).all()]
         
-        # Get subjects from attempted quizzes
-        subject_ids = db.session.query(Subject.id).join(Chapter).join(Quiz).filter(
-            Quiz.id.in_(attempted_quiz_ids) if attempted_quiz_ids else False
-        ).distinct().all()
-        subject_ids = [s[0] for s in subject_ids]
+#         # Get subjects from attempted quizzes
+#         subject_ids = db.session.query(Subject.id).join(Chapter).join(Quiz).filter(
+#             Quiz.id.in_(attempted_quiz_ids) if attempted_quiz_ids else False
+#         ).distinct().all()
+#         subject_ids = [s[0] for s in subject_ids]
         
-        # If user has no history, recommend any published quizzes
-        recommended_quizzes = []
-        if subject_ids:
-            # Recommend quizzes from same subjects that user hasn't attempted yet
-            recommended = db.session.query(Quiz).join(Chapter).filter(
-                Chapter.subject_id.in_(subject_ids),
-                Quiz.is_published == True,
-                ~Quiz.id.in_(attempted_quiz_ids) if attempted_quiz_ids else True
-            ).order_by(func.random()).limit(5).all()
-        else:
-            # New user - recommend any published quizzes
-            recommended = Quiz.query.filter_by(is_published=True).order_by(func.random()).limit(5).all()
+#         # If user has no history, recommend any published quizzes
+#         recommended_quizzes = []
+#         if subject_ids:
+#             # Recommend quizzes from same subjects that user hasn't attempted yet
+#             recommended = db.session.query(Quiz).join(Chapter).filter(
+#                 Chapter.subject_id.in_(subject_ids),
+#                 Quiz.is_published == True,
+#                 ~Quiz.id.in_(attempted_quiz_ids) if attempted_quiz_ids else True
+#             ).order_by(func.random()).limit(5).all()
+#         else:
+#             # New user - recommend any published quizzes
+#             recommended = Quiz.query.filter_by(is_published=True).order_by(func.random()).limit(5).all()
         
-        for quiz in recommended:
-            chapter = Chapter.query.get(quiz.chapter_id)
-            subject = Subject.query.get(chapter.subject_id) if chapter else None
+#         for quiz in recommended:
+#             chapter = Chapter.query.get(quiz.chapter_id)
+#             subject = Subject.query.get(chapter.subject_id) if chapter else None
             
-            recommended_quizzes.append({
-                'id': quiz.id,
-                'title': quiz.title,
-                'description': quiz.description,
-                'subject': subject.name if subject else 'Unknown',
-                'chapter': chapter.name if chapter else 'Unknown',
-                'time_limit': quiz.time_limit,
-                'question_count': Question.query.filter_by(quiz_id=quiz.id).count()
-            })
+#             recommended_quizzes.append({
+#                 'id': quiz.id,
+#                 'title': quiz.title,
+#                 'description': quiz.description,
+#                 'subject': subject.name if subject else 'Unknown',
+#                 'chapter': chapter.name if chapter else 'Unknown',
+#                 'time_limit': quiz.time_limit,
+#                 'question_count': Question.query.filter_by(quiz_id=quiz.id).count()
+#             })
         
-        # Get all subjects for navigation
-        subjects = []
-        for subject in Subject.query.all():
-            subjects.append({
-                'id': subject.id,
-                'name': subject.name,
-                'chapter_count': Chapter.query.filter_by(subject_id=subject.id).count(),
-                'quiz_count': db.session.query(func.count(Quiz.id)).join(Chapter).filter(
-                    Chapter.subject_id == subject.id,
-                    Quiz.is_published == True
-                ).scalar()
-            })
+#         # Get all subjects for navigation
+#         subjects = []
+#         for subject in Subject.query.all():
+#             subjects.append({
+#                 'id': subject.id,
+#                 'name': subject.name,
+#                 'chapter_count': Chapter.query.filter_by(subject_id=subject.id).count(),
+#                 'quiz_count': db.session.query(func.count(Quiz.id)).join(Chapter).filter(
+#                     Chapter.subject_id == subject.id,
+#                     Quiz.is_published == True
+#                 ).scalar()
+#             })
         
-        # Compile dashboard data
-        dashboard_data = {
-            'user': {
-                'id': user.id,
-                'name': user.full_name,
-                'email': user.email
-            },
-            'stats': {
-                'total_attempts': total_attempts,
-                'completed_quizzes': completed_attempts,
-                'in_progress': in_progress_count,
-                'average_score': average_score
-            },
-            'recent_attempts': recent_attempts,
-            'in_progress_quizzes': in_progress_quizzes,
-            'recommended_quizzes': recommended_quizzes,
-            'subjects': subjects
-        }
+#         # Compile dashboard data
+#         dashboard_data = {
+#             'user': {
+#                 'id': user.id,
+#                 'name': user.full_name,
+#                 'email': user.email
+#             },
+#             'stats': {
+#                 'total_attempts': total_attempts,
+#                 'completed_quizzes': completed_attempts,
+#                 'in_progress': in_progress_count,
+#                 'average_score': average_score
+#             },
+#             'recent_attempts': recent_attempts,
+#             'in_progress_quizzes': in_progress_quizzes,
+#             'recommended_quizzes': recommended_quizzes,
+#             'subjects': subjects
+#         }
         
-        return jsonify(dashboard_data)
-    except Exception as e:
-        app.logger.error(f"Error in user dashboard: {str(e)}")
-        return jsonify({"message": f"Error retrieving dashboard data: {str(e)}", "status": "error"}), 500
+#         return jsonify(dashboard_data)
+#     except Exception as e:
+#         app.logger.error(f"Error in user dashboard: {str(e)}")
+#         return jsonify({"message": f"Error retrieving dashboard data: {str(e)}", "status": "error"}), 500
