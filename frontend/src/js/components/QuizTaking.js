@@ -25,7 +25,7 @@ export default {
         },
         progress() {
             if (!this.questions.length) return 0;
-            return Math.round(((this.currentQuestionIndex + 1) / this.questions.length) * 100);
+            return Math.round(((this.currentQuestionIndex) / this.questions.length) * 100);
         },
         formattedTimeLeft() {
             const minutes = Math.floor(this.timeLeft / 60);

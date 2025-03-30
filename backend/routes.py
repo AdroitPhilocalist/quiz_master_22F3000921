@@ -335,8 +335,9 @@ def user_statistics():
         # Calculate total time spent on quizzes (in minutes)
         total_time = 0
         for attempt in user_attempts:
-            if attempt.time_spent:
-                total_time += attempt.time_spent
+            if attempt.completed_at:
+                total_time += int((attempt.completed_at - attempt.started_at).total_seconds())
+        print(total_time)
         
         # Get score history (last 10 completed attempts)
         score_history = []
@@ -403,14 +404,18 @@ def user_statistics():
         for attempt in all_recent_attempts:
             quiz = Quiz.query.get(attempt.quiz_id)
             if quiz:
+                time_spent = 0
+                if attempt.completed_at:
+                    # Convert timedelta to total seconds (as integer)
+                    time_spent = int((attempt.completed_at - attempt.started_at).total_seconds())
                 recent_detailed_attempts.append({
                     'id': attempt.id,
                     'quiz_id': quiz.id,
                     'quiz_title': quiz.title,
                     'date': attempt.started_at.strftime('%Y-%m-%d'),
                     'score': attempt.score if attempt.score is not None else 'N/A',
-                    'time_spent': attempt.time_spent or 0,
-                    'status': 'completed' if attempt.UserQuizAttempt.completed_at != None else 'in_progress'
+                    'time_spent': time_spent,
+                    'status': 'completed' if attempt.completed_at != None else 'in_progress'
                 })
         
         # Progress statistics

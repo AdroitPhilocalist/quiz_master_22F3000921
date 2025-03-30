@@ -354,7 +354,7 @@ export default {
             const mins = minutes % 60;
             
             if (hours > 0) {
-                return `${hours}h ${mins}m`;
+                return `${hours}m ${mins}s`;
             }
             return `${mins} minutes`;
         }
