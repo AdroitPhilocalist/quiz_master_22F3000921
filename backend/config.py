@@ -12,16 +12,21 @@ class LocalDevelopmentConfig(Config):
     WTF_CSRF_ENABLED=False
     SECURITY_TOKEN_MAX_AGE=1800
 
-# Redis and Celery configurations
-REDIS_URL = 'redis://localhost:6379/0'
-CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'UTC'
+    MAIL_SERVER = 'smtp.gmail.com'
+    MAIL_PORT = 587
+    MAIL_USE_TLS = True
+    MAIL_USERNAME = 'sahapiyush5@gmail.com'  
+    MAIL_PASSWORD = 'fhju cfeb axqd wqsl'   
+    MAIL_DEFAULT_SENDER = 'Quiz-Master <sahapiyush5@gmail.com>'
 
-# Cache configurations
-CACHE_TYPE = 'RedisCache'
-CACHE_REDIS_URL = REDIS_URL
-CACHE_DEFAULT_TIMEOUT = 300  # 5 minutes default cache timeout
+    # Celery configuration - using consistent naming
+    BROKER_URL = 'redis://localhost:6379/0'
+    RESULT_BACKEND = 'redis://localhost:6379/0'
+    
+    # For compatibility with older Celery versions
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+    
+    # Cache configuration
+    CACHE_TYPE = 'SimpleCache'
+    CACHE_DEFAULT_TIMEOUT = 300

@@ -5,9 +5,11 @@ from flask_restful import Api, Resource, fields, marshal_with
 from flask_security import auth_required, current_user, roles_required, hash_password
 from backend.models import *
 from datetime import datetime
+
+from flask import current_app
 api = Api(prefix='/api')
 
-# Define fields for marshalling
+
 user_fields = {
     'id': fields.Integer,
     'email': fields.String,
@@ -243,6 +245,7 @@ class ChapterListAPI(Resource):
 class QuizAPI(Resource):
     @marshal_with(quiz_detail_fields)
     @auth_required('token')
+    # @cache.cached(timeout=300, key_prefix=lambda: f'quiz_{request.view_args["quiz_id"]}_{current_user.id}')
     def get(self, quiz_id):
         quiz = Quiz.query.get(quiz_id)
         if not quiz:
@@ -280,6 +283,7 @@ class QuizAPI(Resource):
 class QuizListAPI(Resource):
     @marshal_with(quiz_fields)
     @auth_required('token')
+    # @cache.cached(timeout=300, key_prefix=lambda: f'quizzes_{current_user.id}')
     def get(self, chapter_id=None):
         if chapter_id:
             if 'admin' in [role.name for role in current_user.roles]:
@@ -1211,7 +1215,35 @@ class AttemptAnswersAPI(Resource):
         
         return question_data
 
-# Register the new resources
+class QuizExportAPI(Resource):
+    @auth_required('token')
+    @roles_required('admin')
+    def post(self):
+        try:
+            # Get the current admin's email
+            admin_email = current_user.email
+            
+            # Import the task function
+            from backend.tasks import generate_quiz_export
+            
+            # Run synchronously for testing instead of using Celery
+            result = generate_quiz_export(admin_email)
+            return {'message': 'Export generated successfully', 'download_url': result.get('download_url', '')}, 200
+            
+            # The Celery version below can be uncommented once Redis is properly set up
+            # task = current_app.celery.send_task('backend.tasks.generate_quiz_export', args=[admin_email])
+            # return {
+            #     'message': 'Export job started successfully. You will receive an email when it is ready.',
+            #     'task_id': task.id
+            # }, 202
+            
+        except Exception as e:
+            current_app.logger.error(f"Error starting quiz export: {str(e)}")
+            import traceback
+            current_app.logger.error(traceback.format_exc())
+            return {'message': f'Failed to start export: {str(e)}'}, 500
+
+
 api.add_resource(UserDashboardAPI, '/user/dashboard')
 api.add_resource(QuizStartAPI, '/quizzes/<int:quiz_id>/start')
 api.add_resource(QuizDetailAPI, '/quizzes/<int:quiz_id>')
@@ -1240,3 +1272,4 @@ api.add_resource(UserAttemptsAPI, '/user/attempts')
 
 # Make sure this line is at the bottom of the file and not duplicated
 api.add_resource(AdminDashboardAPI, '/admin/dashboard')
+api.add_resource(QuizExportAPI, '/admin/quizzes/export')

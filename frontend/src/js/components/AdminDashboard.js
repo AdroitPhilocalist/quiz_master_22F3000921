@@ -64,6 +64,70 @@ export default {
                 this.loading = false;
             }
         },
+        showToast(message, title = "Notification", variant = "success") {
+            const toastEl = document.createElement("div");
+            toastEl.className = `toast align-items-center text-white bg-${variant} border-0`;
+            toastEl.setAttribute("role", "alert");
+            toastEl.setAttribute("aria-live", "assertive");
+            toastEl.setAttribute("aria-atomic", "true");
+            toastEl.innerHTML = `
+              <div class="d-flex">
+                  <div class="toast-body">
+                      <strong>${title}:</strong> ${message}
+                  </div>
+                   <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+              </div>
+          `;
+            let toastContainer = document.querySelector(".toast-container");
+            if (!toastContainer) {
+              toastContainer = document.createElement("div");
+              toastContainer.className =
+                "toast-container position-fixed top-0 end-0 p-3";
+              toastContainer.style.zIndex = "1100";
+              document.body.appendChild(toastContainer);
+            }
+      
+            // Add toast to container
+            toastContainer.appendChild(toastEl);
+      
+            // Initialize Bootstrap toast
+            const toast = new bootstrap.Toast(toastEl, {
+              autohide: true,
+              delay: 3000,
+            });
+      
+            // Show toast
+            toast.show();
+      
+            // Remove toast element after it's hidden
+            toastEl.addEventListener("hidden.bs.toast", () => {
+              toastEl.remove();
+            });
+        },
+        async exportQuizzes() {
+            this.loading = true;
+            try {
+                const response = await axios.post('/api/admin/quizzes/export', {}, {
+                    headers: {
+                        'Authentication-Token': localStorage.getItem('token'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                // Check if we have a download URL in the response
+                if (response.data.download_url) {
+                    alert(`Export completed successfully. You can download the file at: ${response.data.download_url}`);
+          
+                } else {
+                    alert(response.data.message || "Export started successfully. You will receive an email when it is ready.");
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+                alert(`Export failed: ${error.response?.data?.message || 'Unknown error'}`);
+            } finally {
+                this.loading = false;
+            }
+        },
         logout() {
             this.$emit('logout');
         },
@@ -161,6 +225,7 @@ export default {
             <div class="flex-grow-1">
                 <!-- Topbar -->
                 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+            
                     <button class="btn btn-link d-md-none rounded-circle mr-3">
                         <i class="fa fa-bars"></i>
                     </button>
@@ -179,6 +244,7 @@ export default {
                                     <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
                                     Profile
                                 </a>
+                                
                                 <a class="dropdown-item" href="#">
                                     <i class="fas fa-cogs fa-sm fa-fw me-2 text-gray-400"></i>
                                     Settings
@@ -197,8 +263,8 @@ export default {
                 <div class="container-fluid px-4">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Admin Dashboard</h1>
-                        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-                            <i class="fas fa-download fa-sm text-white-50 me-1"></i> Generate Report
+                        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" @click.prevent="exportQuizzes">
+                            <i class="fas fa-download fa-sm text-white-50 me-1"></i> Export Quizzes
                         </a>
                     </div>
                     
