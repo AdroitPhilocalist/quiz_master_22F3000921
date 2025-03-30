@@ -33,8 +33,6 @@ export default {
             charts: {
                 scoreHistory: null,
                 subjectPerformance: null,
-                monthlyActivity: null,
-                weekdayActivity: null,
                 accuracyBySubject: null
             }
         }
@@ -85,12 +83,6 @@ export default {
             
             // Subject Performance Chart (Radar chart)
             this.createSubjectPerformanceChart();
-            
-            // Monthly Activity Chart (Bar chart)
-            this.createMonthlyActivityChart();
-            
-            // Weekday Activity Chart (Polar Area chart)
-            this.createWeekdayActivityChart();
             
             // Accuracy by Subject Chart (Horizontal Bar chart)
             this.createAccuracyBySubjectChart();
@@ -199,105 +191,105 @@ export default {
             });
         },
         
-        createMonthlyActivityChart() {
-            const ctx = document.getElementById('monthlyActivityChart').getContext('2d');
-            if (this.charts.monthlyActivity) this.charts.monthlyActivity.destroy();
+        // createMonthlyActivityChart() {
+        //     const ctx = document.getElementById('monthlyActivityChart').getContext('2d');
+        //     if (this.charts.monthlyActivity) this.charts.monthlyActivity.destroy();
             
-            const months = this.stats.progress.monthlyActivity?.map(item => item.month) || 
-                ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const quizCounts = this.stats.progress.monthlyActivity?.map(item => item.count) || 
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        //     const months = this.stats.progress.monthlyActivity?.map(item => item.month) || 
+        //         ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        //     const quizCounts = this.stats.progress.monthlyActivity?.map(item => item.count) || 
+        //         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
             
-            this.charts.monthlyActivity = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: months,
-                    datasets: [{
-                        label: 'Quizzes Taken',
-                        data: quizCounts,
-                        backgroundColor: 'rgba(255, 159, 67, 0.7)',
-                        borderColor: 'rgba(255, 159, 67, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        title: {
-                            display: true,
-                            text: 'Monthly Quiz Activity'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                drawBorder: false
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-        },
+        //     this.charts.monthlyActivity = new Chart(ctx, {
+        //         type: 'bar',
+        //         data: {
+        //             labels: months,
+        //             datasets: [{
+        //                 label: 'Quizzes Taken',
+        //                 data: quizCounts,
+        //                 backgroundColor: 'rgba(255, 159, 67, 0.7)',
+        //                 borderColor: 'rgba(255, 159, 67, 1)',
+        //                 borderWidth: 1
+        //             }]
+        //         },
+        //         options: {
+        //             responsive: true,
+        //             plugins: {
+        //                 legend: {
+        //                     display: false
+        //                 },
+        //                 title: {
+        //                     display: true,
+        //                     text: 'Monthly Quiz Activity'
+        //                 }
+        //             },
+        //             scales: {
+        //                 y: {
+        //                     beginAtZero: true,
+        //                     grid: {
+        //                         drawBorder: false
+        //                     }
+        //                 },
+        //                 x: {
+        //                     grid: {
+        //                         display: false
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     });
+        // },
         
-        createWeekdayActivityChart() {
-            const ctx = document.getElementById('weekdayActivityChart').getContext('2d');
-            if (this.charts.weekdayActivity) this.charts.weekdayActivity.destroy();
+        // createWeekdayActivityChart() {
+        //     const ctx = document.getElementById('weekdayActivityChart').getContext('2d');
+        //     if (this.charts.weekdayActivity) this.charts.weekdayActivity.destroy();
             
-            const weekdays = this.stats.progress.weekdayActivity?.map(item => item.day) || 
-                ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const activityData = this.stats.progress.weekdayActivity?.map(item => item.count) || 
-                [0, 0, 0, 0, 0, 0, 0];
+        //     const weekdays = this.stats.progress.weekdayActivity?.map(item => item.day) || 
+        //         ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        //     const activityData = this.stats.progress.weekdayActivity?.map(item => item.count) || 
+        //         [0, 0, 0, 0, 0, 0, 0];
             
-            this.charts.weekdayActivity = new Chart(ctx, {
-                type: 'polarArea',
-                data: {
-                    labels: weekdays,
-                    datasets: [{
-                        data: activityData,
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.7)',
-                            'rgba(255, 159, 64, 0.7)',
-                            'rgba(255, 205, 86, 0.7)',
-                            'rgba(75, 192, 192, 0.7)',
-                            'rgba(54, 162, 235, 0.7)',
-                            'rgba(153, 102, 255, 0.7)',
-                            'rgba(201, 203, 207, 0.7)'
-                        ],
-                        borderColor: [
-                            'rgb(255, 99, 132)',
-                            'rgb(255, 159, 64)',
-                            'rgb(255, 205, 86)',
-                            'rgb(75, 192, 192)',
-                            'rgb(54, 162, 235)',
-                            'rgb(153, 102, 255)',
-                            'rgb(201, 203, 207)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                        },
-                        title: {
-                            display: true,
-                            text: 'Quiz Activity by Day of Week'
-                        }
-                    }
-                }
-            });
-        },
+        //     this.charts.weekdayActivity = new Chart(ctx, {
+        //         type: 'polarArea',
+        //         data: {
+        //             labels: weekdays,
+        //             datasets: [{
+        //                 data: activityData,
+        //                 backgroundColor: [
+        //                     'rgba(255, 99, 132, 0.7)',
+        //                     'rgba(255, 159, 64, 0.7)',
+        //                     'rgba(255, 205, 86, 0.7)',
+        //                     'rgba(75, 192, 192, 0.7)',
+        //                     'rgba(54, 162, 235, 0.7)',
+        //                     'rgba(153, 102, 255, 0.7)',
+        //                     'rgba(201, 203, 207, 0.7)'
+        //                 ],
+        //                 borderColor: [
+        //                     'rgb(255, 99, 132)',
+        //                     'rgb(255, 159, 64)',
+        //                     'rgb(255, 205, 86)',
+        //                     'rgb(75, 192, 192)',
+        //                     'rgb(54, 162, 235)',
+        //                     'rgb(153, 102, 255)',
+        //                     'rgb(201, 203, 207)'
+        //                 ],
+        //                 borderWidth: 1
+        //             }]
+        //         },
+        //         options: {
+        //             responsive: true,
+        //             plugins: {
+        //                 legend: {
+        //                     position: 'right',
+        //                 },
+        //                 title: {
+        //                     display: true,
+        //                     text: 'Quiz Activity by Day of Week'
+        //                 }
+        //             }
+        //         }
+        //     });
+        // },
         
         createAccuracyBySubjectChart() {
             const ctx = document.getElementById('accuracyBySubjectChart').getContext('2d');
@@ -507,28 +499,7 @@ export default {
                     </div>
                 </div>
                 
-                <!-- Charts Row 2 -->
-                <div class="row mb-4">
-                    <!-- Monthly Activity Chart -->
-                    <div class="col-lg-6 mb-4">
-                        <div style="background: white; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); padding: 20px; height: 100%;">
-                            <h5 style="color: #333; font-weight: 600; margin-bottom: 20px;">Monthly Activity</h5>
-                            <div style="height: 300px;">
-                                <canvas id="monthlyActivityChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Weekday Activity Chart -->
-                    <div class="col-lg-6 mb-4">
-                        <div style="background: white; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); padding: 20px; height: 100%;">
-                            <h5 style="color: #333; font-weight: 600; margin-bottom: 20px;">Activity by Day of Week</h5>
-                            <div style="height: 300px;">
-                                <canvas id="weekdayActivityChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                
                 
                 <!-- Accuracy by Subject Chart -->
                 <div class="row mb-4">
