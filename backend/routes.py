@@ -6,8 +6,13 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, extract
 import logging
 from backend.tasks import *
+from flask_caching import Cache
+from functools import wraps
 datastore = app.security.datastore
-
+cache = Cache()
+cache.init_app(app)
+def cache_key():
+    return f"{request.path}_{current_user.id}"
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -89,29 +94,19 @@ def register():
         db.session.rollback()
         return jsonify({"message": f"Error creating user: {str(e)}", "status": "error"}), 400
 
-# @app.route('/api/admin/dashboard')
-# @auth_required('token')
-# @roles_required('admin')
-# def admin_dashboard():
-#     return jsonify({"message": "Admin dashboard access granted", "status": "success"})
-
-# Add these routes to your existing routes.py file
-
 @app.route('/api/admin/statistics', methods=['GET'])
 @auth_required('token')
 @roles_required('admin')
+@cache.cached(key_prefix=cache_key, timeout=300)
 def admin_statistics():
-    """Get comprehensive statistics for admin dashboard"""
     try:
-        # User statistics
-        total_users = User.query.count()
-        # Get users created in the current month
+        total_users = User.query.count()-1
         current_month = datetime.utcnow().month
         current_year = datetime.utcnow().year
         new_users_this_month = User.query.filter(
             extract('month', User.created_at) == current_month,
             extract('year', User.created_at) == current_year
-        ).count()
+        ).count()-1
         
         # Get monthly user growth for the past year
         user_growth = []
@@ -122,7 +117,7 @@ def admin_statistics():
             count = User.query.filter(
                 extract('month', User.created_at) == month,
                 extract('year', User.created_at) == year
-            ).count()
+            ).count()-1
             user_growth.append({'month': month_name, 'count': count})
         
         # Continuing the admin_statistics route
@@ -130,7 +125,7 @@ def admin_statistics():
         
         # Active users (users who logged in within the last 30 days)
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-        active_users = User.query.filter(User.last_activity >= thirty_days_ago).count()
+        active_users = User.query.filter(User.last_activity >= thirty_days_ago).count()-1
         
         # Role distribution
         roles = Role.query.all()
@@ -304,6 +299,7 @@ def admin_statistics():
 
 @app.route('/api/user/statistics', methods=['GET'])
 @auth_required('token')
+@cache.cached(key_prefix=cache_key, timeout=180) 
 def user_statistics():
     """Get statistics for the current user's quiz performance"""
     try:

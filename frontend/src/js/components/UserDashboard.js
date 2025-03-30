@@ -3,6 +3,12 @@ export default {
     return {
       userName: localStorage.getItem("full_name") || "User",
       loading: false,
+      selectedSubject: null,
+    selectedChapter: null,
+    chaptersForSubject: [],
+    quizzesForChapter: [],
+    loadingChapters: false,
+    loadingQuizzes: false,
       dashboardData: null,
       error: null,
       showProfileModal: false,
@@ -124,6 +130,8 @@ export default {
         };
         this.showProfileModal = true;
       },
+
+
       
       async updateProfile() {
         
@@ -209,10 +217,46 @@ export default {
       closeViewProfileModal() {
         this.showViewProfileModal = false;
       },
-    
-      viewSettings() {
-        alert('Settings functionality will be implemented soon');
-      }
+    async selectSubject(subjectId) {
+    this.selectedSubject = this.subjects.find(s => s.id === subjectId);
+    this.loadingChapters = true;
+    try {
+      const response = await axios.get(`/api/subjects/${subjectId}/chapters`, {
+        headers: {
+          "Authentication-Token": localStorage.getItem("token"),
+        },
+      });
+      this.chaptersForSubject = response.data;
+    } catch (error) {
+      console.error("Error loading chapters:", error);
+    } finally {
+      this.loadingChapters = false;
+    }
+  },
+  
+  async selectChapter(chapterId) {
+    this.selectedChapter = this.chaptersForSubject.find(c => c.id === chapterId);
+    this.loadingQuizzes = true;
+    try {
+      const response = await axios.get(`/api/chapters/${chapterId}/quizzes`, {
+        headers: {
+          "Authentication-Token": localStorage.getItem("token"),
+        },
+      });
+      this.quizzesForChapter = response.data;
+    } catch (error) {
+      console.error("Error loading quizzes:", error);
+    } finally {
+      this.loadingQuizzes = false;
+    }
+  },
+  
+  resetSelection() {
+    this.selectedSubject = null;
+    this.selectedChapter = null;
+    this.chaptersForSubject = [];
+    this.quizzesForChapter = [];
+  }
   },
   template: `
   <div class="container-fluid py-4">
@@ -730,61 +774,134 @@ export default {
 </div>
 </div>
     
-              <!-- Browse Subjects -->
-              <div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden;">
-                  <div style="background: linear-gradient(135deg, #f6c23e 0%, #dda20a 100%); padding: 1.5rem; position: relative; overflow: hidden;">
-                      <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-                      <div style="position: absolute; bottom: -30px; left: 20px; width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
-                      
-                      <div class="d-flex justify-content-between align-items-center">
-                          <div class="d-flex align-items-center">
-                              <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
-                                  <i class="fas fa-book fa-lg" style="color: white;"></i>
-                              </div>
-                              <h5 style="color: white; font-weight: 600; margin: 0;">Browse by Subject</h5>
-                          </div>
-                          <span style="background-color: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
-                              <i class="fas fa-th-list me-1"></i> CATALOG
-                          </span>
-                      </div>
-                  </div>
-                  
-                  <div class="card-body" style="padding: 0;">
-                      <div v-if="subjects.length === 0" style="text-align: center; padding: 3rem 2rem; background: linear-gradient(to bottom, rgba(246, 194, 62, 0.05), rgba(255, 255, 255, 0));">
-                          <div style="width: 120px; height: 120px; background: rgba(246, 194, 62, 0.03); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: 0 10px 30px rgba(246, 194, 62, 0.1);">
-                              <i class="fas fa-book fa-3x" style="color: #f6c23e; opacity: 0.4;"></i>
-                          </div>
-                          <h5 style="font-weight: 600; color: #333; margin-bottom: 0.75rem;">No subjects available</h5>
-                          <p style="color: #6c757d; max-width: 300px; margin: 0 auto;">Check back later for new content.</p>
-                      </div>
-                      
-                      <div v-else>
-                          <div v-for="subject in subjects" :key="subject.id" class="animate__animated animate__fadeIn" style="padding: 1rem 1.25rem; border-bottom: 1px solid rgba(0,0,0,0.05); transition: all 0.3s ease;"
-                               onmouseover="this.style.backgroundColor='rgba(246, 194, 62, 0.02)'" 
-                               onmouseout="this.style.backgroundColor='transparent'">
-                              <div class="d-flex justify-content-between align-items-center">
-                                  <div class="d-flex align-items-center">
-                                      <div style="width: 42px; height: 42px; background: linear-gradient(135deg, #f6c23e, #dda20a); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px; box-shadow: 0 4px 10px rgba(246, 194, 62, 0.2);">
-                                          <span style="color: white; font-weight: 600; font-size: 1rem;">{{ subject.name.charAt(0) }}</span>
-                                      </div>
-                                      <div>
-                                          <h6 style="font-weight: 600; margin: 0; color: #333; font-size: 1rem;">{{ subject.name }}</h6>
-                                          <span style="color: #6c757d; font-size: 0.8rem;">
-                                              <i class="fas fa-bookmark me-1" style="color: #f6c23e;"></i> {{ subject.chapters.length }} chapters
-                                          </span>
-                                      </div>
-                                  </div>
-                                  <button @click="browseSubject(subject.id)" 
-                                          style="background: transparent; color: #f6c23e; border: 1px solid #f6c23e; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;"
-                                          onmouseover="this.style.background='#f6c23e'; this.style.color='white';" 
-                                          onmouseout="this.style.background='transparent'; this.style.color='#f6c23e';">
-                                      <i class="fas fa-arrow-right"></i>
-                                  </button>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
+              <!-- Browse Quizzes (Multi-step) -->
+<div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden;">
+  <div style="background: linear-gradient(135deg, #f6c23e 0%, #dda20a 100%); padding: 1.5rem; position: relative; overflow: hidden;">
+    <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+    <div style="position: absolute; bottom: -30px; left: 20px; width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+    
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center">
+        <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+          <i class="fas fa-book fa-lg" style="color: white;"></i>
+        </div>
+        <h5 style="color: white; font-weight: 600; margin: 0;">
+          {{ selectedSubject ? (selectedChapter ? 'Available Quizzes' : 'Select Chapter') : 'Browse Quizzes' }}
+        </h5>
+      </div>
+      <button v-if="selectedSubject" @click="resetSelection" 
+              style="background-color: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; border: none; cursor: pointer;">
+        <i class="fas fa-undo me-1"></i> Back
+      </button>
+    </div>
+  </div>
+  
+  <div class="card-body" style="padding: 1.5rem;">
+    <!-- Step 1: Select Subject -->
+    <div v-if="!selectedSubject">
+      <div v-if="subjects.length === 0" style="text-align: center; padding: 2rem;">
+        <i class="fas fa-book fa-3x" style="color: #f6c23e; opacity: 0.4; margin-bottom: 1rem;"></i>
+        <h5 style="font-weight: 600; color: #333; margin-bottom: 0.75rem;">No subjects available</h5>
+        <p style="color: #6c757d; max-width: 300px; margin: 0 auto;">Check back later for new content.</p>
+      </div>
+      
+      <div v-else class="list-group">
+        <button v-for="subject in subjects" :key="subject.id" 
+                @click="selectSubject(subject.id)"
+                style="border: none; background: none; text-align: left; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer; transition: all 0.3s ease;"
+                onmouseover="this.style.backgroundColor='rgba(246, 194, 62, 0.05)'" 
+                onmouseout="this.style.backgroundColor='transparent'">
+          <div class="d-flex align-items-center">
+            <div style="width: 42px; height: 42px; background: linear-gradient(135deg, #f6c23e, #dda20a); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px; box-shadow: 0 4px 10px rgba(246, 194, 62, 0.2);">
+              <span style="color: white; font-weight: 600; font-size: 1rem;">{{ subject.name.charAt(0) }}</span>
+            </div>
+            <div>
+              <h6 style="font-weight: 600; margin: 0; color: #333; font-size: 1rem;">{{ subject.name }}</h6>
+              <span style="color: #6c757d; font-size: 0.8rem;">
+                <i class="fas fa-bookmark me-1" style="color: #f6c23e;"></i> {{ subject.chapters.length }} chapters
+              </span>
+            </div>
+          </div>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Step 2: Select Chapter -->
+    <div v-else-if="selectedSubject && !selectedChapter">
+      <div v-if="loadingChapters" style="text-align: center; padding: 2rem;">
+        <i class="fas fa-spinner fa-spin fa-2x" style="color: #f6c23e;"></i>
+        <p style="color: #6c757d; margin-top: 1rem;">Loading chapters...</p>
+      </div>
+      
+      <div v-else-if="chaptersForSubject.length === 0" style="text-align: center; padding: 2rem;">
+        <i class="fas fa-folder-open fa-3x" style="color: #f6c23e; opacity: 0.4; margin-bottom: 1rem;"></i>
+        <h5 style="font-weight: 600; color: #333; margin-bottom: 0.75rem;">No chapters available</h5>
+        <p style="color: #6c757d; max-width: 300px; margin: 0 auto;">This subject doesn't have any chapters yet.</p>
+      </div>
+      
+      <div v-else class="list-group">
+        <button v-for="chapter in chaptersForSubject" :key="chapter.id" 
+                @click="selectChapter(chapter.id)"
+                style="border: none; background: none; text-align: left; padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer; transition: all 0.3s ease;"
+                onmouseover="this.style.backgroundColor='rgba(246, 194, 62, 0.05)'" 
+                onmouseout="this.style.backgroundColor='transparent'">
+          <div class="d-flex align-items-center">
+            <div style="width: 42px; height: 42px; background: rgba(246, 194, 62, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+              <i class="fas fa-layer-group" style="color: #f6c23e;"></i>
+            </div>
+            <div>
+              <h6 style="font-weight: 600; margin: 0; color: #333; font-size: 1rem;">{{ chapter.name }}</h6>
+              <span style="color: #6c757d; font-size: 0.8rem;">
+                <i class="fas fa-question-circle me-1" style="color: #f6c23e;"></i> {{ chapter.quiz_count || 0 }} quizzes
+              </span>
+            </div>
+          </div>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Step 3: Show Quizzes -->
+    <div v-else>
+      <div v-if="loadingQuizzes" style="text-align: center; padding: 2rem;">
+        <i class="fas fa-spinner fa-spin fa-2x" style="color: #f6c23e;"></i>
+        <p style="color: #6c757d; margin-top: 1rem;">Loading quizzes...</p>
+      </div>
+      
+      <div v-else-if="quizzesForChapter.length === 0" style="text-align: center; padding: 2rem;">
+        <i class="fas fa-question-circle fa-3x" style="color: #f6c23e; opacity: 0.4; margin-bottom: 1rem;"></i>
+        <h5 style="font-weight: 600; color: #333; margin-bottom: 0.75rem;">No quizzes available</h5>
+        <p style="color: #6c757d; max-width: 300px; margin: 0 auto;">This chapter doesn't have any quizzes yet.</p>
+      </div>
+      
+      <div v-else class="list-group">
+        <div v-for="quiz in quizzesForChapter" :key="quiz.id" 
+             style="padding: 1rem; border-bottom: 1px solid rgba(0,0,0,0.05); transition: all 0.3s ease;"
+             onmouseover="this.style.backgroundColor='rgba(246, 194, 62, 0.05)'" 
+             onmouseout="this.style.backgroundColor='transparent'">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 style="font-weight: 600; margin: 0; color: #333; font-size: 1rem;">{{ quiz.title }}</h6>
+              <div class="d-flex align-items-center mt-1">
+                <span style="color: #6c757d; font-size: 0.8rem; margin-right: 12px;">
+                  <i class="fas fa-clock me-1" style="color: #f6c23e;"></i> {{ quiz.time_limit }} mins
+                </span>
+                <span style="color: #6c757d; font-size: 0.8rem;">
+                  <i class="fas fa-question-circle me-1" style="color: #f6c23e;"></i> {{ quiz.question_count }} questions
+                </span>
               </div>
+            </div>
+            <button @click="$router.push('/quiz/' + quiz.id)"
+                    style="background: transparent; color: #f6c23e; border: 1px solid #f6c23e; padding: 5px 15px; border-radius: 50px; font-weight: 600; font-size: 0.8rem; transition: all 0.3s ease;"
+                    onmouseover="this.style.background='#f6c23e'; this.style.color='white';" 
+                    onmouseout="this.style.background='transparent'; this.style.color='#f6c23e';">
+              <i class="fas fa-play me-1"></i> Start
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 

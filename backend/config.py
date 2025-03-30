@@ -1,6 +1,9 @@
 class Config():
     DEBUG=False
     SQL_ALCHEMY_TRACK_MODIFICATIONS=True
+    CACHE_TYPE = 'RedisCache'
+    CACHE_REDIS_URL = 'redis://localhost:6379/0'
+    CACHE_DEFAULT_TIMEOUT = 300
 
 class LocalDevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI="sqlite:///database.sqlite3"
@@ -22,11 +25,6 @@ class LocalDevelopmentConfig(Config):
     # Celery configuration - using consistent naming
     BROKER_URL = 'redis://localhost:6379/0'
     RESULT_BACKEND = 'redis://localhost:6379/0'
-    
-    # For compatibility with older Celery versions
-    CELERY_BROKER_URL = 'redis://localhost:6379/0'
-    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-    
-    # Cache configuration
-    CACHE_TYPE = 'SimpleCache'
+    CACHE_TYPE = 'RedisCache'
+    CACHE_REDIS_URL = 'redis://localhost:6379/0'
     CACHE_DEFAULT_TIMEOUT = 300

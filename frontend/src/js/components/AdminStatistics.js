@@ -160,11 +160,13 @@ export default {
                     scales: {
                         y: {
                             beginAtZero: true,
+                            min: 0,
                             grid: {
                                 drawBorder: false
                             }
                         },
                         x: {
+                            beginAtZero: true,
                             grid: {
                                 display: false
                             }
