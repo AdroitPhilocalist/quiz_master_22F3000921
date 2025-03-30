@@ -65,6 +65,7 @@ class Quiz(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_published = db.Column(db.Boolean, default=False)
+    activation_date = db.Column(db.DateTime, nullable=True)
     chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id'), nullable=True)
     # Relationships
     questions = db.relationship('Question', backref='quiz', lazy=True, cascade="all, delete-orphan")

@@ -176,6 +176,10 @@ export default {
               toastEl.remove();
             });
         },
+        formatDateForBackend(dateString) {
+            if (!dateString) return null;
+            return new Date(dateString).toISOString().split('T')[0];
+        },
         
         async fetchChapterName() {
             if (!this.chapterId) return;
@@ -223,7 +227,8 @@ export default {
                 title: '', 
                 description: '', 
                 time_limit: 30,
-                is_published: false
+                is_published: false,
+                activationDate: ''
             };
             this.showAddModal = true;
             // Focus the input field after the modal is shown
@@ -272,6 +277,7 @@ export default {
                     description: this.newQuiz.description,
                     time_limit: this.newQuiz.time_limit,
                     is_published: this.newQuiz.is_published,
+                    activation_date: this.formatDateForBackend(this.newQuiz.activationDate),
                     chapter_id: this.chapterId
                 }, {
                     headers: {
@@ -605,6 +611,17 @@ export default {
                                         required
                                     >
                                 </div>
+                            </div>
+                            <div style="margin-bottom: 1.5rem;">
+                            <label for="activationDate">Activation Date (Optional)</label>
+                            <input 
+                                type="date" 
+                                id="activationDate" 
+                                class="form-control" 
+                                v-model="newQuiz.activationDate"
+                                :min="new Date().toISOString().split('T')[0]"
+                            >
+                            <small class="text-muted">Leave empty to make quiz available immediately</small>
                             </div>
                             <div style="margin-bottom: 1rem; display: flex; align-items: center;">
                                 <div class="form-check form-switch">

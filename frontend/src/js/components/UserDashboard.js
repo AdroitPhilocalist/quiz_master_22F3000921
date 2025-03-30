@@ -30,6 +30,7 @@ export default {
       },
       recentAttempts: [],
       inProgressQuizzes: [],
+      upcomingQuizzes: [],
       recommendedQuizzes: [],
       subjects: [],
     };
@@ -55,6 +56,7 @@ export default {
         this.inProgressQuizzes = response.data.in_progress_quizzes;
         this.recommendedQuizzes = response.data.recommended_quizzes;
         this.subjects = response.data.subjects;
+        this.upcomingQuizzes = response.data.upcoming_quizzes || [];
         console.log(response.data);
         
       } catch (error) {
@@ -461,7 +463,7 @@ export default {
       <!-- Main Content -->
       <div class="row">
           <!-- Left Column -->
-          <div class="col-lg-8">
+          <div class="col-lg-6">
               <!-- In Progress Quizzes -->
               <div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden; transition: all 0.3s ease;">
                 <div style="background: linear-gradient(135deg, #000DFF 0%, #6B73FF 100%); padding: 1.5rem; position: relative; overflow: hidden;">
@@ -612,7 +614,7 @@ export default {
           </div>
           
           <!-- Right Column -->
-          <div class="col-lg-4">
+          <div class="col-lg-6">
               <!-- Recent Results -->
               <div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden;">
                   <div style="background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); padding: 1.5rem; position: relative; overflow: hidden;">
@@ -671,6 +673,62 @@ export default {
                       </div>
                   </div>
               </div>
+
+
+
+
+              <!-- Upcoming Quizzes -->
+<div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden;">
+<div style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); padding: 1.5rem; position: relative; overflow: hidden;">
+  <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+  <div style="position: absolute; bottom: -30px; left: 20px; width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+  
+  <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center">
+      <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 16px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+        <i class="fas fa-calendar-alt fa-lg" style="color: white;"></i>
+      </div>
+      <h5 style="color: white; font-weight: 600; margin: 0;">Upcoming Quizzes</h5>
+    </div>
+    <span style="background-color: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+      <i class="fas fa-clock me-1"></i> COMING SOON
+    </span>
+  </div>
+</div>
+
+<div class="card-body" style="padding: 0;">
+  <div v-if="upcomingQuizzes.length === 0" style="text-align: center; padding: 3rem 2rem; background: linear-gradient(to bottom, rgba(108, 117, 125, 0.05), rgba(255, 255, 255, 0));">
+    <div style="width: 120px; height: 120px; background: rgba(108, 117, 125, 0.03); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: 0 10px 30px rgba(108, 117, 125, 0.1);">
+      <i class="fas fa-calendar-plus fa-3x" style="color: #6c757d; opacity: 0.4;"></i>
+    </div>
+    <h5 style="font-weight: 600; color: #333; margin-bottom: 0.75rem;">No upcoming quizzes</h5>
+    <p style="color: #6c757d; max-width: 300px; margin: 0 auto;">Check back later for new quizzes that will be available soon.</p>
+  </div>
+  
+  <div v-else class="list-group list-group-flush">
+    <div v-for="quiz in upcomingQuizzes" :key="quiz.id" class="list-group-item" style="border: none; padding: 1.25rem; transition: all 0.3s ease; border-bottom: 1px solid rgba(0,0,0,0.05);">
+      <div class="d-flex align-items-center">
+        <div style="width: 40px; height: 40px; background: rgba(108, 117, 125, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 16px;">
+          <i class="fas fa-hourglass-start" style="color: #6c757d;"></i>
+        </div>
+        <div class="flex-grow-1">
+          <h6 style="font-weight: 600; margin-bottom: 4px;">{{ quiz.title }}</h6>
+          <div class="d-flex align-items-center">
+            <small class="text-muted me-3"><i class="fas fa-book me-1"></i> {{ quiz.subject }}</small>
+            <small class="text-muted me-3"><i class="fas fa-layer-group me-1"></i> {{ quiz.chapter }}</small>
+            <small class="text-muted"><i class="fas fa-clock me-1"></i> Available {{ formatDate(quiz.activation_date) }}</small>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <span class="badge" style="background-color: rgba(108, 117, 125, 0.1); color: #495057; font-weight: 500; padding: 5px 10px; border-radius: 20px;">
+            <i class="fas fa-hourglass-half me-1"></i> Coming Soon
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
     
               <!-- Browse Subjects -->
               <div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden;">

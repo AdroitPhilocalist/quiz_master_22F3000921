@@ -5,7 +5,7 @@ from flask_restful import Api, Resource, fields, marshal_with
 from flask_security import auth_required, current_user, roles_required, hash_password
 from backend.models import *
 from datetime import datetime
-
+from sqlalchemy import or_
 from flask import current_app
 api = Api(prefix='/api')
 
@@ -56,6 +56,7 @@ quiz_fields = {
     'time_limit': fields.Integer,
     'created_by': fields.Integer,
     'created_at': fields.DateTime,
+    'activation_date': fields.DateTime,
     'is_published': fields.Boolean,
     'chapter_id': fields.Integer
 }
@@ -66,6 +67,7 @@ quiz_detail_fields = {
     'time_limit': fields.Integer,
     'created_by': fields.Integer,
     'created_at': fields.DateTime,
+    'activation_date': fields.DateTime,
     'is_published': fields.Boolean,
     'chapter_id': fields.Integer,
     'questions': fields.List(fields.Nested(question_fields))
@@ -248,6 +250,7 @@ class QuizAPI(Resource):
     @auth_required('token')
     # @cache.cached(timeout=300, key_prefix=lambda: f'quiz_{request.view_args["quiz_id"]}_{current_user.id}')
     def get(self, quiz_id):
+        print('not admin')
         quiz = Quiz.query.get(quiz_id)
         if not quiz:
             return {"message": "Quiz not found"}, 404
@@ -277,25 +280,48 @@ class QuizAPI(Resource):
         quiz.time_limit = data.get('time_limit', quiz.time_limit)
         quiz.is_published = data.get('is_published', quiz.is_published)
         
+        # Handle activation_date update
+        if 'activation_date' in data:
+            if data['activation_date']:
+                try:
+                    quiz.activation_date = datetime.strptime(data['activation_date'], '%Y-%m-%d')
+                except ValueError:
+                    return {"message": "Invalid date format. Use YYYY-MM-DD"}, 400
+            else:
+                quiz.activation_date = None
+        
         db.session.commit()
         return {"message": "Quiz updated successfully"}, 200
-
-# Update QuizListAPI to filter by chapter_id
 class QuizListAPI(Resource):
     @marshal_with(quiz_fields)
     @auth_required('token')
-    # @cache.cached(timeout=300, key_prefix=lambda: f'quizzes_{current_user.id}')
     def get(self, chapter_id=None):
+        now = datetime.utcnow()
         if chapter_id:
             if 'admin' in [role.name for role in current_user.roles]:
                 quizzes = Quiz.query.filter_by(chapter_id=chapter_id).all()
             else:
-                quizzes = Quiz.query.filter_by(chapter_id=chapter_id, is_published=True).all()
+                
+                quizzes = Quiz.query.filter(
+                    Quiz.chapter_id == chapter_id,
+                    Quiz.is_published == False,
+                    or_(
+                        Quiz.activation_date == None,
+                        Quiz.activation_date <= now
+                    )
+                ).all()
         else:
             if 'admin' in [role.name for role in current_user.roles]:
                 quizzes = Quiz.query.all()
             else:
-                quizzes = Quiz.query.filter_by(is_published=True).all()
+                print('not admin')
+                quizzes = Quiz.query.filter(
+                    Quiz.is_published == True,
+                    or_(
+                        Quiz.activation_date == None,
+                        Quiz.activation_date <= now
+                    )
+                ).all()
         return quizzes
     
     @auth_required('token')
@@ -304,7 +330,8 @@ class QuizListAPI(Resource):
         data = request.get_json()
         title = data.get('title')
         description = data.get('description')
-        time_limit = data.get('time_limit', 600)  # Default 10 minutes
+        time_limit = data.get('time_limit', 600)
+        activation_date = data.get('activation_date')  # New field
         
         # If chapter_id is not in the URL, get it from the request data
         if not chapter_id:
@@ -313,25 +340,26 @@ class QuizListAPI(Resource):
         if not title:
             return {"message": "Title is required"}, 400
         
-        if chapter_id:
-            # Check if chapter exists
-            chapter = Chapter.query.get(chapter_id)
-            if not chapter:
-                return {"message": "Chapter not found"}, 404
+        # Convert activation_date string to datetime if provided
+        if activation_date:
+            try:
+                activation_date = datetime.strptime(activation_date, '%Y-%m-%d')
+            except ValueError:
+                return {"message": "Invalid date format. Use YYYY-MM-DD"}, 400
         
         quiz = Quiz(
             title=title,
             description=description,
             time_limit=time_limit,
             created_by=current_user.id,
-            is_published=False,
-            chapter_id=chapter_id
+            chapter_id=chapter_id,
+            activation_date=activation_date
         )
         
         db.session.add(quiz)
         db.session.commit()
-        return {"message": "Quiz created successfully", "quiz_id": quiz.id}, 201
-
+        
+        return {"message": "Quiz created successfully", "id": quiz.id}, 201
 # Question Resources
 class QuestionAPI(Resource):
     @marshal_with(question_fields)
@@ -744,18 +772,23 @@ class UserAPI(Resource):
         
         # Check if trying to delete the last admin
         if any(role.name == 'admin' for role in user.roles):
-            admin_count = 0
-            for u in User.query.all():
-                if any(role.name == 'admin' for role in u.roles):
-                    admin_count += 1
-            
+            admin_count = User.query.join(User.roles).filter(Role.name == 'admin').count()
             if admin_count <= 1:
                 return {"message": "Cannot delete the only admin user"}, 400
+        # First delete all related quiz attempts
+        attempts = UserQuizAttempt.query.filter_by(user_id=user_id).all()
+        for attempt in attempts:
+            # Delete all answers for this attempt
+            UserAnswer.query.filter_by(attempt_id=attempt.id).delete()
         
+        # Then delete the attempts themselves
+        UserQuizAttempt.query.filter_by(user_id=user_id).delete()
+        
+        # Finally delete the user
         db.session.delete(user)
         db.session.commit()
         
-        return {"message": "User deleted successfully"}
+        return {"message": "User deleted successfully"}, 200
 
 class UserStatsAPI(Resource):
     @auth_required('token')
@@ -882,11 +915,37 @@ class UserDashboardAPI(Resource):
         attempts = UserQuizAttempt.query.filter_by(user_id=user_id).all()
         
         # Get available quizzes (published ones)
-        available_quizzes = Quiz.query.filter_by(is_published=True).all()
+        available_quizzes = Quiz.query.filter(
+        Quiz.is_published == True,
+        or_(
+            Quiz.activation_date == None,
+            Quiz.activation_date <= datetime.utcnow()
+        )
+    ).all()
+
+        upcoming_quizzes = Quiz.query.filter(
+            Quiz.is_published == True,
+            Quiz.activation_date > datetime.utcnow()
+        ).all()
         
         # Get subjects with chapters and quizzes
         subjects = Subject.query.all()
         subject_data = []
+
+        formatted_upcoming = []
+        for quiz in upcoming_quizzes:
+            chapter = Chapter.query.get(quiz.chapter_id)
+            subject = Subject.query.get(chapter.subject_id) if chapter else None
+            
+            formatted_upcoming.append({
+                'id': quiz.id,
+                'title': quiz.title,
+                'description': quiz.description,
+                'activation_date': quiz.activation_date.isoformat(),
+                'time_limit': quiz.time_limit,
+                'chapter': chapter.name if chapter else "Unknown",
+                'subject': subject.name if subject else "Unknown"
+            })
         
         for subject in subjects:
             chapters = Chapter.query.filter_by(subject_id=subject.id).all()
@@ -992,7 +1051,8 @@ class UserDashboardAPI(Resource):
             'recent_attempts': recent_attempts,
             'in_progress_quizzes': in_progress_quizzes,
             'recommended_quizzes': recommended_quizzes,
-            'subjects': subject_data
+            'subjects': subject_data,
+            'upcoming_quizzes': formatted_upcoming 
         }
 
 # Add API endpoints for quiz taking

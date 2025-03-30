@@ -706,3 +706,4 @@ def get_profile():
     except Exception as e:
         app.logger.error(f"Error retrieving profile: {str(e)}")
         return jsonify({"message": f"Error retrieving profile: {str(e)}", "status": "error"}), 500
+
