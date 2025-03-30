@@ -88,6 +88,7 @@ user_list_fields = {
     'dob': fields.String,
     'role': fields.String,
     'status': fields.String,
+    'active': fields.Boolean,
     'created_at': fields.DateTime,
     'last_activity': fields.DateTime
 }
@@ -607,6 +608,7 @@ class UserListAPI(Resource):
                 'dob': str(user.dob) if hasattr(user, 'dob') and user.dob else None,
                 'role': role,
                 'status': user.status if hasattr(user, 'status') else 'active',
+                'active': user.active, 
                 'created_at': user.created_at if hasattr(user, 'created_at') else datetime.now(),
                 'last_activity': user.last_login_at if hasattr(user, 'last_login_at') else None
             }
@@ -1243,6 +1245,37 @@ class QuizExportAPI(Resource):
             current_app.logger.error(traceback.format_exc())
             return {'message': f'Failed to start export: {str(e)}'}, 500
 
+class UserActivationAPI(Resource):
+    @auth_required('token')
+    @roles_required('admin')
+    def patch(self, user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return {"message": "User not found"}, 404
+        
+        data = request.get_json()
+        active_status = data.get('active')
+        
+        if active_status is None:
+            return {"message": "Active status is required"}, 400
+        
+        # Check if trying to deactivate the last admin
+        if not active_status and any(role.name == 'admin' for role in user.roles):
+            admin_count = 0
+            active_admin_count = 0
+            for u in User.query.all():
+                if any(role.name == 'admin' for role in u.roles):
+                    admin_count += 1
+                    if u.active:
+                        active_admin_count += 1
+            
+            if active_admin_count <= 1 and user.active:
+                return {"message": "Cannot deactivate the only active admin user"}, 400
+        
+        user.active = active_status
+        db.session.commit()
+        
+        return {"message": "User activation status updated successfully", "active": user.active}
 
 api.add_resource(UserDashboardAPI, '/user/dashboard')
 api.add_resource(QuizStartAPI, '/quizzes/<int:quiz_id>/start')
@@ -1273,3 +1306,4 @@ api.add_resource(UserAttemptsAPI, '/user/attempts')
 # Make sure this line is at the bottom of the file and not duplicated
 api.add_resource(AdminDashboardAPI, '/admin/dashboard')
 api.add_resource(QuizExportAPI, '/admin/quizzes/export')
+api.add_resource(UserActivationAPI, '/admin/users/<int:user_id>/activate')

@@ -136,7 +136,10 @@ export default {
                 });
                 console.log('API response:', response.data);
                 
-                this.users = response.data.map(user => ({
+                // Filter out admin users, only keep normal users
+                const normalUsers = response.data.filter(user => user.role !== 'admin');
+                
+                this.users = normalUsers.map(user => ({
                     ...user,
                     status: user.status || 'active' // Default status if not provided
                 }));
@@ -362,19 +365,37 @@ export default {
                     this.users[userIndex].status = newStatus;
                 }
                 
-                this.$toast.success('User status updated!', {
-                    position: 'top-right',
-                    timeout: 2000,
-                    closeOnClick: true
-                });
+                alert("user status updated!");
                 
             } catch (error) {
                 console.error('Failed to update user status:', error);
-                this.$toast.error('Failed to update user status', {
-                    position: 'top-right',
-                    timeout: 3000,
-                    closeOnClick: true
-                });
+                alert("user status updation failed!");
+            }
+        },
+        async toggleUserActivation(userId, currentlyActive) {
+            try {
+                const newActiveStatus = !currentlyActive;
+                await axios.patch(`/api/admin/users/${userId}/activate`, 
+                    { active: newActiveStatus },
+                    { 
+                        headers: {
+                            'Authentication-Token': localStorage.getItem('token')
+                        }
+                    }
+                );
+                
+                // Update local user data
+                const userIndex = this.users.findIndex(u => u.id === userId);
+                if (userIndex !== -1) {
+                    this.users[userIndex].active = newActiveStatus;
+                }
+                
+                const message = newActiveStatus ? 'User activated successfully!' : 'User deactivated successfully!';
+                alert("success");
+                
+            } catch (error) {
+                console.error('Failed to update user activation status:', error);
+                alert("error");
             }
         },
         getStatusBadgeClass(status) {
@@ -646,22 +667,15 @@ export default {
                                                     </span>
                                                 </td>
                                                 <td>{{ formatDate(user.created_at) }}</td>
+                                            
                                                 <td>
-                                                    <div class="dropdown">
-                                                        <button class="btn btn-sm rounded-pill dropdown-toggle" 
-                                                                :class="getStatusBadgeClass(user.status)" 
-                                                                data-bs-toggle="dropdown">
-                                                            {{ user.status || 'Active' }}
-                                                        </button>
-                                                        <ul class="dropdown-menu">
-                                                            <li v-for="option in userStatusOptions">
-                                                                <a class="dropdown-item" href="#" 
-                                                                   @click.prevent="updateUserStatus(user.id, option.value)">
-                                                                    <span class="badge me-2" :class="'bg-' + option.color">●</span>
-                                                                    {{ option.label }}
-                                                                </a>
-                                                            </li>
-                                                        </ul>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" 
+                                                            :checked="user.active !== false" 
+                                                            @change="toggleUserActivation(user.id, user.active !== false)">
+                                                        <label class="form-check-label">
+                                                            {{ user.active !== false ? 'Active' : 'Inactive' }}
+                                                        </label>
                                                     </div>
                                                 </td>
                                                 <td>

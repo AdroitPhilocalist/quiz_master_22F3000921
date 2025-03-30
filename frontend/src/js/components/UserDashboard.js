@@ -5,6 +5,23 @@ export default {
       loading: false,
       dashboardData: null,
       error: null,
+      showProfileModal: false,
+      profileForm: {
+        full_name: '',
+        qualification: '',
+        date_of_birth: ''
+      },
+      showViewProfileModal: false,
+    userDetails: {
+      email: '',
+      full_name: '',
+      qualification: '',
+      date_of_birth: '',
+      created_at: '',
+      active: false,
+      last_activity: ''
+    },
+      formErrors: {}, // To store validation errors from the backend
       stats: {
         total_quizzes_taken: 0,
         quizzes_in_progress: 0,
@@ -20,6 +37,7 @@ export default {
   created() {
     this.fetchDashboardData();
   },
+
   methods: {
     async fetchDashboardData() {
       this.loading = true;
@@ -81,6 +99,7 @@ export default {
       if (score >= 50) return "text-warning";
       return "text-danger";
     },
+    
     logout() {
         // Remove all stored user data
         localStorage.removeItem('token');
@@ -94,8 +113,101 @@ export default {
         this.$router.push('/user/analytics');
       },
       viewProfile() {
-        alert('Profile view functionality will be implemented soon');
+        // console.log("hi");
+        // Populate form with current user data
+        this.profileForm = {
+          full_name: this.dashboardData?.user?.name || '',
+          qualification: this.dashboardData?.user?.qualification || '',
+          date_of_birth: this.dashboardData?.user?.dob || ''
+        };
+        this.showProfileModal = true;
       },
+      
+      async updateProfile() {
+        
+        try {
+          const response = await axios.put('/api/user/profile', this.profileForm, {
+            headers: {
+              'Authentication-Token': localStorage.getItem('token')
+            }
+          });
+          
+          // Update local data
+          if (this.dashboardData?.user) {
+            console.log("hi");
+            this.dashboardData.user.name = this.profileForm.full_name;
+            this.dashboardData.user.qualification = this.profileForm.qualification;
+            this.dashboardData.user.dob = this.profileForm.date_of_birth;
+
+            this.profileForm = {
+                full_name: this.dashboardData?.user?.name || '',
+                qualification: this.dashboardData?.user?.qualification || '',
+                date_of_birth: this.dashboardData?.user?.dob || ''
+              };
+
+            console.log(this.profileForm);
+          }
+          
+          this.userName = this.profileForm.full_name;
+          localStorage.setItem('full_name', this.profileForm.full_name);
+          
+          this.showProfileModal = false;
+          this.$toast.success('Profile updated successfully!', {
+            position: 'top-right',
+            timeout: 2000
+          });
+          
+        } catch (error) {
+            // More robust error handling
+            const errorMessage = error.response?.data?.message || 
+                               error.response?.data?.error || 
+                               'Failed to update profile';
+            
+            this.formErrors = error.response?.data?.errors || {};
+            
+            this.$toast.error(errorMessage, {
+                position: 'top-right',
+                timeout: 2000
+            });
+        }
+    },
+      
+      closeProfileModal() {
+        this.showProfileModal = false;
+        this.formErrors = {};
+      },
+
+      async viewUserProfile() {
+        try {
+          const response = await axios.get('/api/user/profile', {
+            headers: {
+              'Authentication-Token': localStorage.getItem('token')
+            }
+          });
+          
+          this.userDetails = {
+            email: response.data.user.email,
+            full_name: response.data.user.full_name,
+            qualification: response.data.user.qualification || 'Not specified',
+            date_of_birth: response.data.user.date_of_birth || 'Not specified',
+            created_at: new Date(response.data.user.created_at).toLocaleString(),
+            active: response.data.user.active ? 'Active' : 'Inactive',
+            last_activity: response.data.last_activity || 'Recently'
+          };
+          
+          this.showViewProfileModal = true;
+        } catch (error) {
+          this.$toast.error('Failed to load profile details', {
+            position: 'top-right',
+            timeout: 2000
+          });
+        }
+      },
+      
+      closeViewProfileModal() {
+        this.showViewProfileModal = false;
+      },
+    
       viewSettings() {
         alert('Settings functionality will be implemented soon');
       }
@@ -167,8 +279,12 @@ export default {
                             aria-labelledby="userDropdown">
                             <a class="dropdown-item" href="#" @click.prevent="viewProfile">
                                 <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
-                                Profile
+                                Edit Profile
                             </a>
+                            <a class="dropdown-item" href="#" @click.prevent="viewUserProfile">
+          <i class="fas fa-user-circle fa-sm fa-fw me-2 text-gray-400"></i>
+          View Profile
+      </a>
                             <a class="dropdown-item" href="#" @click.prevent="viewStatistics">
                                 <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
                                 Statistics
@@ -449,6 +565,7 @@ export default {
                     </div>
                 </div>
               </div>
+
               
               <!-- Recommended Quizzes -->
               <div class="card mb-4" style="border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden;">
@@ -638,6 +755,114 @@ export default {
                       </div>
                   </div>
               </div>
+
+
+
+             <!-- View Profile Modal -->
+  <div v-if="showViewProfileModal" class="modal-backdrop" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1050; display: flex; justify-content: center; align-items: center;">
+  <div class="modal-content" style="width: 500px; max-width: 95%; background: white; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #000DFF 0%, #6B73FF 100%); padding: 20px; color: white; position: relative;">
+          <div style="position: absolute; top: 0; right: 0; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; transform: translate(30%, -30%);"></div>
+          <h5 style="margin: 0; font-weight: 600; position: relative;">User Profile</h5>
+          <button @click="closeViewProfileModal" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; position: relative;">&times;</button>
+      </div>
+      
+      <div class="modal-body" style="padding: 25px;">
+          <div class="user-avatar" style="width: 80px; height: 80px; background: linear-gradient(135deg, #000DFF 0%, #6B73FF 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 2rem; font-weight: bold;">
+              {{ userDetails.full_name.charAt(0).toUpperCase() }}
+          </div>
+          
+          <div class="profile-details" style="background: #f9f9f9; border-radius: 12px; padding: 20px;">
+              <div class="detail-item" style="margin-bottom: 15px; display: flex;">
+                  <div style="width: 120px; font-weight: 500; color: #555;">Full Name:</div>
+                  <div>{{ userDetails.full_name }}</div>
+              </div>
+              <div class="detail-item" style="margin-bottom: 15px; display: flex;">
+                  <div style="width: 120px; font-weight: 500; color: #555;">Email:</div>
+                  <div>{{ userDetails.email }}</div>
+              </div>
+              <div class="detail-item" style="margin-bottom: 15px; display: flex;">
+                  <div style="width: 120px; font-weight: 500; color: #555;">Qualification:</div>
+                  <div>{{ userDetails.qualification }}</div>
+              </div>
+              <div class="detail-item" style="margin-bottom: 15px; display: flex;">
+                  <div style="width: 120px; font-weight: 500; color: #555;">Date of Birth:</div>
+                  <div>{{ userDetails.date_of_birth }}</div>
+              </div>
+              <div class="detail-item" style="margin-bottom: 15px; display: flex;">
+                  <div style="width: 120px; font-weight: 500; color: #555;">Member Since:</div>
+                  <div>{{ userDetails.created_at }}</div>
+              </div>
+              <div class="detail-item" style="margin-bottom: 15px; display: flex;">
+                  <div style="width: 120px; font-weight: 500; color: #555;">Status:</div>
+                  <div>
+                      <span :style="{color: userDetails.active === 'Active' ? '#1cc88a' : '#e74a3b', fontWeight: 500}">
+                          {{ userDetails.active }}
+                      </span>
+                  </div>
+              </div>
+          </div>
+      </div>
+      
+      <div class="modal-footer" style="padding: 15px 25px; border-top: 1px solid #eee; display: flex; justify-content: flex-end;">
+          <button @click="closeViewProfileModal" style="padding: 8px 20px; background: #f5f5f5; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.3s;">
+              Close
+          </button>
+      </div>
+  </div>
+</div>
+
+
+
+              <!-- Profile Modal -->
+      <div v-if="showProfileModal" class="modal-backdrop" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1050; display: flex; justify-content: center; align-items: center;">
+      <div class="modal-content" style="width: 500px; max-width: 95%; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #000DFF 0%, #6B73FF 100%); padding: 20px; color: white;">
+          <h5 style="margin: 0; font-weight: 600;">Complete Your Profile</h5>
+          <button @click="closeProfileModal" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        
+        <div class="modal-body" style="padding: 25px;">
+          <form @submit.prevent="updateProfile">
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #555;">Full Name</label>
+              <input v-model="profileForm.full_name" type="text" 
+                     style="width: 100%; padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;"
+                     :style="{'border-color': formErrors.full_name ? '#ff4444' : '#ddd'}">
+              <small v-if="formErrors.full_name" style="color: #ff4444; font-size: 0.85rem;">{{ formErrors.full_name }}</small>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #555;">Qualification</label>
+              <input v-model="profileForm.qualification" type="text" 
+                     style="width: 100%; padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;"
+                     :style="{'border-color': formErrors.qualification ? '#ff4444' : '#ddd'}">
+              <small v-if="formErrors.qualification" style="color: #ff4444; font-size: 0.85rem;">{{ formErrors.qualification }}</small>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 25px;">
+              <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #555;">Date of Birth</label>
+              <input v-model="profileForm.date_of_birth" type="date" 
+                     style="width: 100%; padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;"
+                     :style="{'border-color': formErrors.date_of_birth ? '#ff4444' : '#ddd'}">
+              <small v-if="formErrors.date_of_birth" style="color: #ff4444; font-size: 0.85rem;">{{ formErrors.date_of_birth }}</small>
+            </div>
+            
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid #eee;">
+              <button @click="closeProfileModal" type="button" 
+                      style="padding: 10px 20px; background: #f5f5f5; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: background 0.3s;">
+                Cancel
+              </button>
+              <button type="submit" 
+                      style="padding: 10px 20px; background: linear-gradient(135deg, #000DFF 0%, #6B73FF 100%); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: opacity 0.3s;">
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
           </div>
       </div>
     </div>

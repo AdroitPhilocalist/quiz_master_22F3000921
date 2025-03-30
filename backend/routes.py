@@ -26,6 +26,10 @@ def login():
     user = datastore.find_user(email=email)
     if not user:
         return jsonify({"message": "Invalid email", "status": "error"}), 404
+
+    # Check if user is active
+    if not user.active:
+        return jsonify({"message": "Your account has been deactivated. Please contact an administrator.", "status": "error"}), 403
     
     if verify_password(password, user.password):
         # Update last activity timestamp
@@ -633,5 +637,67 @@ def user_statistics():
 #         return jsonify({"message": f"Error retrieving dashboard data: {str(e)}", "status": "error"}), 500
 
 # Add these routes to your existing routes.py file
+@app.route('/api/user/profile', methods=['PUT'])
+@auth_required('token')
+def update_profile():
+    """Update user profile information"""
+    try:
+        data = request.get_json()
+        user = current_user._get_current_object()
+        
+        # Validate required fields
+        if not data.get('full_name'):
+            return jsonify({"message": "Full name is required", "status": "error"}), 400
+            
+        # Update user fields
+        user.full_name = data.get('full_name', user.full_name)
+        user.qualification = data.get('qualification', user.qualification)
+        
+        # Handle date of birth
+        dob = data.get('date_of_birth')
+        if dob:
+            try:
+                user.date_of_birth = datetime.strptime(dob, '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({"message": "Invalid date format. Use YYYY-MM-DD", "status": "error"}), 400
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Profile updated successfully",
+            "status": "success",
+            "user": {
+                "full_name": user.full_name,
+                "qualification": user.qualification,
+                "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
+                "email": user.email
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error updating profile: {str(e)}")
+        return jsonify({"message": f"Error updating profile: {str(e)}", "status": "error"}), 500
 
-
+@app.route('/api/user/profile', methods=['GET'])
+@auth_required('token')
+def get_profile():
+    """Get current user's profile information"""
+    try:
+        user = current_user._get_current_object()
+        
+        return jsonify({
+            "status": "success",
+            "user": {
+                "email": user.email,
+                "full_name": user.full_name,
+                "qualification": user.qualification,
+                "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+                "active": user.active
+            }
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error retrieving profile: {str(e)}")
+        return jsonify({"message": f"Error retrieving profile: {str(e)}", "status": "error"}), 500
