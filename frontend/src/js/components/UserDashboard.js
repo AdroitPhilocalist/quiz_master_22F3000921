@@ -231,7 +231,7 @@ export default {
                 <!-- Welcome Section (Enhanced) -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card border-0 overflow-hidden position-relative">
+        <div class="card border-0 position-relative">
             <!-- Decorative background elements -->
             <div class="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style="z-index: 0">
                 <div class="position-absolute" style="width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%); top: -150px; left: -50px;"></div>
@@ -289,10 +289,7 @@ export default {
                                 <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
                                 Statistics
                             </a>
-                            <a class="dropdown-item" href="#" @click.prevent="viewSettings">
-                                <i class="fas fa-cogs fa-sm fa-fw me-2 text-gray-400"></i>
-                                Settings
-                            </a>
+    
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="#" @click.prevent="logout">
                                 <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>
@@ -310,32 +307,7 @@ export default {
                     </div>
                 </div>
                 
-                <!-- Additional dashboard quick stats -->
-                <div class="bg-white px-4 py-3 border-top d-flex justify-content-between flex-wrap">
-                    <div class="py-1 me-3">
-                        <span class="text-muted small">Today's Goal</span>
-                        <div class="d-flex align-items-center">
-                            <div class="progress flex-grow-1 me-2" style="height: 6px; width: 100px;">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: 40%"></div>
-                            </div>
-                            <span class="text-dark fw-bold">2/5</span>
-                        </div>
-                    </div>
-                    <div class="py-1 me-3">
-                        <span class="text-muted small">Study Streak</span>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-fire text-warning me-1"></i>
-                            <span class="text-dark fw-bold">3 Days</span>
-                        </div>
-                    </div>
-                    <div class="py-1">
-                        <span class="text-muted small">Next Quiz</span>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-calendar-alt text-primary me-1"></i>
-                            <span class="text-dark fw-bold">In Progress</span>
-                        </div>
-                    </div>
-                </div>
+               
             </div>
         </div>
     </div>

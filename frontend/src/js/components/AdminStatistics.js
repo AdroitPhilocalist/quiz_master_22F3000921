@@ -1,6 +1,7 @@
 export default {
     data() {
         return {
+            chartJsLoaded: false,
             loading: true,
             error: null,
             stats: {
@@ -38,21 +39,25 @@ export default {
                 userGrowth: null,
                 quizDistribution: null,
                 scoreDistribution: null,
-                attemptsByMonth: null,
                 subjectPopularity: null
             }
         }
     },
     mounted() {
-        this.fetchStatistics();
         // Load Chart.js from CDN
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
         script.onload = () => {
-            this.initializeCharts();
+            this.chartJsLoaded = true;
+            this.fetchStatistics();
+        };
+        script.onerror = () => {
+            console.error('Failed to load Chart.js');
+            this.fetchStatistics(); // Still fetch data even if Chart.js fails
         };
         document.head.appendChild(script);
     },
+    
     methods: {
         async fetchStatistics() {
             this.loading = true;
@@ -67,10 +72,8 @@ export default {
                 const data = response.data;
                 this.stats = data;
                 
-                // Initialize charts once data is loaded
-                if (window.Chart) {
-                    this.initializeCharts();
-                }
+                // Initialize charts once everything is ready
+                this.initializeChartsWhenReady();
             } catch (error) {
                 this.error = 'Failed to load statistics';
                 console.error(error);
@@ -79,22 +82,41 @@ export default {
             }
         },
         
+        initializeChartsWhenReady() {
+            const checkReady = () => {
+                if (!window.Chart || !this.chartJsLoaded) {
+                    setTimeout(checkReady, 100);
+                    return;
+                }
+                
+                const chartIds = [
+                    'userGrowthChart', 
+                    'quizDistributionChart', 
+                    'scoreDistributionChart',
+                    'subjectPopularityChart'
+                ];
+                const allChartsExist = chartIds.every(id => document.getElementById(id));
+                
+                if (allChartsExist) {
+                    this.initializeCharts();
+                } else {
+                    setTimeout(checkReady, 100);
+                }
+            };
+            
+            checkReady();
+        },
+        
         initializeCharts() {
-            if (!window.Chart || this.loading) return;
+            if (!window.Chart) {
+                console.warn('Chart.js not loaded');
+                return;
+            }
             
-            // User Growth Chart (Line chart)
+            console.log('All chart containers found, initializing charts...');
             this.createUserGrowthChart();
-            
-            // Quiz Distribution Chart (Pie chart)
             this.createQuizDistributionChart();
-            
-            // Score Distribution Chart (Bar chart)
             this.createScoreDistributionChart();
-            
-            // Monthly Attempts Chart (Line chart)
-            this.createMonthlyAttemptsChart();
-            
-            // Subject Popularity Chart (Horizontal Bar chart)
             this.createSubjectPopularityChart();
         },
         
@@ -249,59 +271,59 @@ export default {
             });
         },
         
-        createMonthlyAttemptsChart() {
-            const ctx = document.getElementById('monthlyAttemptsChart').getContext('2d');
-            if (this.charts.attemptsByMonth) this.charts.attemptsByMonth.destroy();
+        // createMonthlyAttemptsChart() {
+        //     const ctx = document.getElementById('monthlyAttemptsChart').getContext('2d');
+        //     if (this.charts.attemptsByMonth) this.charts.attemptsByMonth.destroy();
             
-            const months = this.stats.attempts.monthlyAttempts?.map(item => item.month) || 
-                ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const attemptData = this.stats.attempts.monthlyAttempts?.map(item => item.count) || 
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        //     const months = this.stats.attempts.monthlyAttempts?.map(item => item.month) || 
+        //         ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        //     const attemptData = this.stats.attempts.monthlyAttempts?.map(item => item.count) || 
+        //         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
             
-            this.charts.attemptsByMonth = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: months,
-                    datasets: [{
-                        label: 'Quiz Attempts',
-                        data: attemptData,
-                        borderColor: '#ff9f43',
-                        backgroundColor: 'rgba(255, 159, 67, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#ff9f43',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        title: {
-                            display: true,
-                            text: 'Monthly Quiz Attempts'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                drawBorder: false
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-        },
+        //     this.charts.attemptsByMonth = new Chart(ctx, {
+        //         type: 'line',
+        //         data: {
+        //             labels: months,
+        //             datasets: [{
+        //                 label: 'Quiz Attempts',
+        //                 data: attemptData,
+        //                 borderColor: '#ff9f43',
+        //                 backgroundColor: 'rgba(255, 159, 67, 0.1)',
+        //                 tension: 0.4,
+        //                 fill: true,
+        //                 pointBackgroundColor: '#ff9f43',
+        //                 pointBorderColor: '#fff',
+        //                 pointBorderWidth: 2,
+        //                 pointRadius: 4
+        //             }]
+        //         },
+        //         options: {
+        //             responsive: true,
+        //             plugins: {
+        //                 legend: {
+        //                     position: 'top',
+        //                 },
+        //                 title: {
+        //                     display: true,
+        //                     text: 'Monthly Quiz Attempts'
+        //                 }
+        //             },
+        //             scales: {
+        //                 y: {
+        //                     beginAtZero: true,
+        //                     grid: {
+        //                         drawBorder: false
+        //                     }
+        //                 },
+        //                 x: {
+        //                     grid: {
+        //                         display: false
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     });
+        // },
         
         createSubjectPopularityChart() {
             const ctx = document.getElementById('subjectPopularityChart').getContext('2d');
@@ -355,6 +377,11 @@ export default {
     template: `
     <div style="min-height: 100vh; background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%); padding: 30px 20px;">
         <div class="container-fluid" style="max-width: 1400px; margin: 0 auto;">
+            <!-- Back Button -->
+            <button @click="$router.push('/admin')" style="margin-bottom: 20px; background: #5a67e3; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
+                <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+            </button>
+    
             <!-- Header -->
             <div class="row mb-4">
                 <div class="col-12">
@@ -511,21 +538,7 @@ export default {
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Monthly Attempts Chart -->
-                    <div class="col-lg-6 mb-4">
-                        <div style="background: white; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); padding: 20px; height: 100%;">
-                            <h5 style="color: #333; font-weight: 600; margin-bottom: 20px;">Monthly Quiz Attempts</h5>
-                            <div style="height: 300px;">
-                                <canvas id="monthlyAttemptsChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Subject Popularity Chart -->
-                <div class="row">
-                    <div class="col-12 mb-4">
+                    <div class="col-6 mb-4">
                         <div style="background: white; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); padding: 20px;">
                             <h5 style="color: #333; font-weight: 600; margin-bottom: 20px;">Subject Popularity</h5>
                             <div style="height: 300px;">
@@ -533,7 +546,9 @@ export default {
                             </div>
                         </div>
                     </div>
+                    
                 </div>
+                
                 
                 <!-- Most Popular Quizzes -->
                 <div class="row">

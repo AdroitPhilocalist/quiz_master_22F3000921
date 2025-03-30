@@ -1,6 +1,7 @@
 export default {
     data() {
         return {
+            chartJsLoaded: false,
             loading: true,
             error: null,
             userId: null,
@@ -37,58 +38,83 @@ export default {
             }
         }
     },
-    mounted() {
+    
+mounted() {
+    // Load Chart.js from CDN
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    script.onload = () => {
+        this.chartJsLoaded = true;
         this.fetchUserStatistics();
-        // Load Chart.js from CDN
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-        script.onload = () => {
-            this.initializeCharts();
-        };
-        document.head.appendChild(script);
-    },
-    methods: {
-        async fetchUserStatistics() {
-            this.loading = true;
-            try {
-                const response = await axios.get('/api/user/statistics', {
-                    headers: {
-                        'Authentication-Token': localStorage.getItem('token')
-                    }
-                });
-                
-                // Process and store the statistics
-                const data = response.data;
-                this.userId = data.user_id;
-                this.userName = data.user_name;
-                this.stats = data.stats;
-                
-                // Initialize charts once data is loaded
-                if (window.Chart) {
-                    this.initializeCharts();
+    };
+    script.onerror = () => {
+        console.error('Failed to load Chart.js');
+        this.fetchUserStatistics(); // Still fetch data even if Chart.js fails
+    };
+    document.head.appendChild(script);
+},
+    
+methods: {
+    async fetchUserStatistics() {
+        this.loading = true;
+        try {
+            const response = await axios.get('/api/user/statistics', {
+                headers: {
+                    'Authentication-Token': localStorage.getItem('token')
                 }
-            } catch (error) {
-                this.error = 'Failed to load statistics';
-                console.error(error);
-            } finally {
-                this.loading = false;
+            });
+            
+            // Process and store the statistics
+            const data = response.data;
+            this.userId = data.user_id;
+            this.userName = data.user_name;
+            this.stats = data.stats;
+            
+            // Initialize charts once everything is ready
+            this.initializeChartsWhenReady();
+        } catch (error) {
+            this.error = 'Failed to load statistics';
+            console.error(error);
+        } finally {
+            this.loading = false;
+        }
+    },
+    
+    initializeChartsWhenReady() {
+        const checkReady = () => {
+            if (!window.Chart || !this.chartJsLoaded) {
+                setTimeout(checkReady, 100);
+                return;
             }
-        },
+            
+            const chartIds = ['scoreHistoryChart', 'subjectPerformanceChart', 'accuracyBySubjectChart'];
+            const allChartsExist = chartIds.every(id => document.getElementById(id));
+            
+            if (allChartsExist) {
+                this.initializeCharts();
+            } else {
+                setTimeout(checkReady, 100);
+            }
+        };
         
-        initializeCharts() {
-            if (!window.Chart || this.loading) return;
-            
-            // Score History Chart (Line chart)
-            this.createScoreHistoryChart();
-            
-            // Subject Performance Chart (Radar chart)
-            this.createSubjectPerformanceChart();
-            
-            // Accuracy by Subject Chart (Horizontal Bar chart)
-            this.createAccuracyBySubjectChart();
-        },
+        checkReady();
+    },
+    
+    initializeCharts() {
+        if (!window.Chart) {
+            console.warn('Chart.js not loaded');
+            return;
+        }
+        
+        console.log('All chart containers found, initializing charts...');
+        this.createScoreHistoryChart();
+        this.createSubjectPerformanceChart();
+        this.createAccuracyBySubjectChart();
+    },
         
         createScoreHistoryChart() {
+            const chartElement = document.getElementById('scoreHistoryChart');
+        if (!chartElement) return;
             const ctx = document.getElementById('scoreHistoryChart').getContext('2d');
             if (this.charts.scoreHistory) this.charts.scoreHistory.destroy();
             
@@ -145,7 +171,11 @@ export default {
             });
         },
         
+        
         createSubjectPerformanceChart() {
+            const chartElement = document.getElementById('subjectPerformanceChart');
+        if (!chartElement) return;
+            console.log('Creating subject performance chart...');
             const ctx = document.getElementById('subjectPerformanceChart').getContext('2d');
             if (this.charts.subjectPerformance) this.charts.subjectPerformance.destroy();
             
@@ -292,6 +322,8 @@ export default {
         // },
         
         createAccuracyBySubjectChart() {
+            const chartElement = document.getElementById('accuracyBySubjectChart');
+        if (!chartElement) return;
             const ctx = document.getElementById('accuracyBySubjectChart').getContext('2d');
             if (this.charts.accuracyBySubject) this.charts.accuracyBySubject.destroy();
             
@@ -348,12 +380,17 @@ export default {
             if (hours > 0) {
                 return `${hours}m ${mins}s`;
             }
-            return `${mins} minutes`;
+            return `${mins} seconds`;
         }
     },
     template: `
     <div style="min-height: 100vh; background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%); padding: 30px 20px;">
         <div class="container-fluid" style="max-width: 1200px; margin: 0 auto;">
+            <!-- Back Button -->
+            <button @click="$router.go(-1)" style="margin-bottom: 20px; background: #5a67e3; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
+                <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+            </button>
+    
             <!-- Header -->
             <div class="row mb-4">
                 <div class="col-12">
