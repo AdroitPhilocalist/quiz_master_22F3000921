@@ -18,6 +18,7 @@ export default {
                     subjectPerformance: [],
                     recentAttempts: []
                 },
+                leaderboard: [] ,
                 progress: {
                     totalQuestions: 0,
                     correctAnswers: 0,
@@ -34,6 +35,7 @@ export default {
             charts: {
                 scoreHistory: null,
                 subjectPerformance: null,
+                leaderboard: null,
                 accuracyBySubject: null
             }
         }
@@ -110,6 +112,7 @@ methods: {
         this.createScoreHistoryChart();
         this.createSubjectPerformanceChart();
         this.createAccuracyBySubjectChart();
+        this.createLeaderboardChart();
     },
         
         createScoreHistoryChart() {
@@ -320,6 +323,64 @@ methods: {
         //         }
         //     });
         // },
+        createLeaderboardChart() {
+            const chartElement = document.getElementById('leaderboardChart');
+            if (!chartElement) return;
+            
+            const ctx = chartElement.getContext('2d');
+            if (this.charts.leaderboard) this.charts.leaderboard.destroy();
+            
+            const users = this.stats.leaderboard.map(item => item.name);
+            const accuracy = this.stats.leaderboard.map(item => item.accuracy);
+            
+            this.charts.leaderboard = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: users,
+                    datasets: [{
+                        label: 'Accuracy (%)',
+                        data: accuracy,
+                        backgroundColor: 'rgba(90, 103, 227, 0.7)',
+                        borderColor: 'rgba(90, 103, 227, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Top 10 Users by Accuracy'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                drawBorder: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Accuracy (%)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Users'
+                            }
+                        }
+                    }
+                }
+            });
+        },
         
         createAccuracyBySubjectChart() {
             const chartElement = document.getElementById('accuracyBySubjectChart');
@@ -549,6 +610,15 @@ methods: {
                         </div>
                     </div>
                 </div>
+                <div class="card mb-4">
+                <div class="card-header">
+                    <h5 style="color: #333; font-weight: 600; margin-bottom: 20px;">Leaderboard</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="leaderboardChart" height="100"></canvas>
+                </div>
+            </div>
+
                 
                 <!-- Recent Attempts -->
                 <div class="row">

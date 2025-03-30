@@ -305,6 +305,29 @@ def user_statistics():
     try:
         user_id = current_user.id
         user_name = current_user.full_name
+        all_users = User.query.filter(
+    ~User.roles.any(Role.name == 'admin')
+).all()
+        leaderboard = []
+        for user in all_users:
+            attempts = UserQuizAttempt.query.filter_by(user_id=user.id).all()
+            completed_attempts = [a for a in attempts if a.completed_at is not None]
+            
+            if completed_attempts:
+                total_questions = sum(a.total_questions for a in completed_attempts)
+                correct_answers = sum(a.correct_answers for a in completed_attempts)
+                accuracy = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+            else:
+                accuracy = 0
+                
+            leaderboard.append({
+                'user_id': user.id,
+                'name': user.full_name,
+                'accuracy': round(accuracy, 2)
+            })
+
+    # Sort by accuracy (descending)
+        leaderboard.sort(key=lambda x: x['accuracy'], reverse=True)
         
         # Quiz attempt statistics
         user_attempts = UserQuizAttempt.query.filter_by(user_id=user_id).all()
@@ -334,6 +357,9 @@ def user_statistics():
             if attempt.completed_at:
                 total_time += int((attempt.completed_at - attempt.started_at).total_seconds())
         print(total_time)
+
+        
+        
         
         # Get score history (last 10 completed attempts)
         score_history = []
@@ -459,6 +485,7 @@ def user_statistics():
             'user_id': user_id,
             'user_name': user_name,
             'stats': {
+                'leaderboard': leaderboard[:10],
                 'quizzes': {
                     'attempted': total_attempted,
                     'completed': completed_attempts,
