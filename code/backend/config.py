@@ -18,3 +18,10 @@ class LocalDevelopmentConfig(Config):
     MAIL_USERNAME = 'sahapiyush5@gmail.com'  
     MAIL_PASSWORD = 'fhju cfeb axqd wqsl'   
     MAIL_DEFAULT_SENDER = 'Quiz-Master <sahapiyush5@gmail.com>'
+
+    # Celery Configuration
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379/1'
+    
+    # Redis Configuration
+    REDIS_URL = 'redis://localhost:6379/0'
