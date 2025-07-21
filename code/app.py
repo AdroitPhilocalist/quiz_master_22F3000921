@@ -3,6 +3,7 @@ from backend.config import LocalDevelopmentConfig
 from backend.models import db,User,Role
 from flask_security import Security,SQLAlchemyUserDatastore,auth_required,hash_password
 from backend.resources import *
+from backend.celery_app import make_celery
 from datetime import datetime
 
 def createApp():
@@ -16,10 +17,17 @@ def createApp():
     #flask security
     datastore=SQLAlchemyUserDatastore(db,User,Role)
     app.security=Security(app,datastore=datastore,register_blueprint=False)#after giving this register_blueprint=False all the premade routesbby flask login wll be disabled
+    
+
+    celery = make_celery(app)
+    app.celery = celery
+
     app.app_context().push()
     return app
 
 app=createApp()
+celery= app.celery
+
 
 with app.app_context():
     db.create_all()
