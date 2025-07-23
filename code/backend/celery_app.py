@@ -25,7 +25,13 @@ def make_celery(app):
         beat_schedule={
             'send-daily-reminders': {
                 'task': 'backend.tasks.send_daily_reminders',
+                # 'schedule': crontab(minute='*'),  #every minute for testing
                 'schedule': crontab(hour=18, minute=0),  # Every day at 6:00 PM
+            },
+            'send-monthly-activity-report': {
+                'task': 'backend.tasks.send_monthly_activity_report',
+                # 'schedule': crontab(minute='*'),  #every minute for testing, change to monthly in production
+                'schedule': crontab(day_of_month=1, hour=9, minute=0),  # 1st day of month at 9:00 AM
             },
         }
     )

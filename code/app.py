@@ -31,10 +31,11 @@ def createApp():
 
 def register_tasks(celery_app):
     """Register all Celery tasks"""
-    from backend.tasks import send_daily_reminders
+    from backend.tasks import send_daily_reminders, send_monthly_activity_report
     
     # Register the task with Celery
     celery_app.task(name='backend.tasks.send_daily_reminders')(send_daily_reminders)
+    celery_app.task(name='backend.tasks.send_monthly_activity_report')(send_monthly_activity_report)
 
 app = createApp()
 
