@@ -7,7 +7,9 @@ from sqlalchemy import func, desc, or_, extract
 from flask import current_app
 import logging
 import calendar
-
+import csv
+import os
+from io import StringIO
 def send_email(recipient, subject, body):
     """Helper function to send an email"""
     try:
@@ -779,3 +781,483 @@ def send_monthly_activity_report():
             'error': str(e),
             'timestamp': datetime.now().isoformat()
         }
+    
+
+
+
+
+def export_quiz_data_csv():
+    """
+    Async task to export comprehensive quiz data to CSV
+    This includes users, quizzes, attempts, and performance data
+    """
+    try:
+        print("=== CSV EXPORT TASK STARTED ===")
+        current_app.logger.info("Starting CSV export task...")
+        
+        # Create timestamp for unique filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"quiz_master_export_{timestamp}.csv"
+        
+        # Create exports directory if it doesn't exist
+        export_dir = os.path.join(current_app.static_folder, 'exports')
+        os.makedirs(export_dir, exist_ok=True)
+        
+        filepath = os.path.join(export_dir, filename)
+        
+        print(f"Generating export file: {filename}")
+        
+        # Open CSV file for writing
+        with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
+            
+            # Write CSV headers
+            headers = [
+                'Export_Type', 'User_ID', 'User_Email', 'User_Full_Name', 'User_Role', 
+                'User_Active', 'User_Created_Date', 'User_Last_Activity',
+                'Quiz_ID', 'Quiz_Title', 'Quiz_Description', 'Quiz_Time_Limit', 
+                'Quiz_Is_Published', 'Quiz_Created_Date', 'Subject_Name', 'Chapter_Name',
+                'Attempt_ID', 'Attempt_Score', 'Attempt_Started_At', 'Attempt_Completed_At',
+                'Attempt_Time_Taken_Minutes', 'Total_Questions', 'Correct_Answers',
+                'User_Total_Quizzes', 'User_Average_Score', 'User_Best_Score',
+                'Subject_Performance', 'Monthly_Activity_Count'
+            ]
+            writer.writerow(headers)
+            
+            print("CSV headers written, starting data collection...")
+            
+            # Get all users (excluding admins for main data, but including for summary)
+            all_users = User.query.all()
+            regular_users = User.query.filter(User.roles.any(Role.name == 'user')).all()
+            
+            rows_written = 0
+            
+            # SECTION 1: USER SUMMARY DATA
+            print("Writing user summary data...")
+            for user in all_users:
+                role = 'admin' if any(r.name == 'admin' for r in user.roles) else 'user'
+                
+                # Get user's quiz statistics
+                user_attempts = UserQuizAttempt.query.filter_by(user_id=user.id).all()
+                completed_attempts = [a for a in user_attempts if a.completed_at is not None]
+                
+                # Calculate user statistics
+                total_quizzes = len(completed_attempts)
+                scores = [a.score for a in completed_attempts if a.score is not None]
+                avg_score = sum(scores) / len(scores) if scores else 0
+                best_score = max(scores) if scores else 0
+                
+                # Subject performance summary
+                subject_perf = {}
+                for attempt in completed_attempts:
+                    quiz = Quiz.query.get(attempt.quiz_id)
+                    if quiz and quiz.chapter_id:
+                        chapter = Chapter.query.get(quiz.chapter_id)
+                        if chapter and chapter.subject_id:
+                            subject = Subject.query.get(chapter.subject_id)
+                            if subject:
+                                if subject.name not in subject_perf:
+                                    subject_perf[subject.name] = []
+                                subject_perf[subject.name].append(attempt.score or 0)
+                
+                # Format subject performance
+                subject_summary = "; ".join([
+                    f"{subj}: {sum(scores)/len(scores):.1f}% ({len(scores)} attempts)" 
+                    for subj, scores in subject_perf.items()
+                ])
+                
+                # Monthly activity count (current month)
+                current_month = datetime.now().month
+                current_year = datetime.now().year
+                monthly_count = UserQuizAttempt.query.filter(
+                    UserQuizAttempt.user_id == user.id,
+                    extract('month', UserQuizAttempt.started_at) == current_month,
+                    extract('year', UserQuizAttempt.started_at) == current_year
+                ).count()
+                
+                # Write user summary row
+                row = [
+                    'USER_SUMMARY',  # Export_Type
+                    user.id,  # User_ID
+                    user.email,  # User_Email
+                    user.full_name or '',  # User_Full_Name
+                    role,  # User_Role
+                    user.active,  # User_Active
+                    user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '',  # User_Created_Date
+                    user.last_activity.strftime('%Y-%m-%d %H:%M:%S') if user.last_activity else '',  # User_Last_Activity
+                    '', '', '', '', '', '',  # Quiz fields (empty for summary)
+                    '', '',  # Subject and Chapter (empty for summary)
+                    '', '', '', '', '', '', '',  # Attempt fields (empty for summary)
+                    total_quizzes,  # User_Total_Quizzes
+                    round(avg_score, 1),  # User_Average_Score
+                    round(best_score, 1),  # User_Best_Score
+                    subject_summary,  # Subject_Performance
+                    monthly_count  # Monthly_Activity_Count
+                ]
+                writer.writerow(row)
+                rows_written += 1
+            
+            print(f"User summary data written: {len(all_users)} users")
+            
+            # SECTION 2: DETAILED QUIZ ATTEMPT DATA
+            print("Writing detailed quiz attempt data...")
+            
+            # Get all quiz attempts with detailed information
+            all_attempts = UserQuizAttempt.query.filter(
+                UserQuizAttempt.completed_at.isnot(None)
+            ).order_by(UserQuizAttempt.started_at.desc()).all()
+            
+            for attempt in all_attempts:
+                user = User.query.get(attempt.user_id)
+                quiz = Quiz.query.get(attempt.quiz_id)
+                
+                if not user or not quiz:
+                    continue
+                
+                # Get quiz details
+                chapter = Chapter.query.get(quiz.chapter_id) if quiz.chapter_id else None
+                subject = Subject.query.get(chapter.subject_id) if chapter and chapter.subject_id else None
+                
+                # Calculate attempt details
+                time_taken_minutes = 0
+                if attempt.completed_at and attempt.started_at:
+                    time_taken_seconds = (attempt.completed_at - attempt.started_at).total_seconds()
+                    time_taken_minutes = int(time_taken_seconds // 60)
+                
+                # Get question/answer details
+                user_answers = UserAnswer.query.filter_by(attempt_id=attempt.id).all()
+                total_questions = len(user_answers)
+                correct_answers = 0
+                
+                for answer in user_answers:
+                    option = Option.query.get(answer.option_id)
+                    if option and option.is_correct:
+                        correct_answers += 1
+                
+                # User role
+                role = 'admin' if any(r.name == 'admin' for r in user.roles) else 'user'
+                
+                # User overall statistics (for context)
+                user_all_attempts = UserQuizAttempt.query.filter_by(user_id=user.id).all()
+                user_completed = [a for a in user_all_attempts if a.completed_at is not None]
+                user_scores = [a.score for a in user_completed if a.score is not None]
+                user_avg = sum(user_scores) / len(user_scores) if user_scores else 0
+                user_best = max(user_scores) if user_scores else 0
+                
+                # Write detailed attempt row
+                row = [
+                    'QUIZ_ATTEMPT',  # Export_Type
+                    user.id,  # User_ID
+                    user.email,  # User_Email
+                    user.full_name or '',  # User_Full_Name
+                    role,  # User_Role
+                    user.active,  # User_Active
+                    user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '',  # User_Created_Date
+                    user.last_activity.strftime('%Y-%m-%d %H:%M:%S') if user.last_activity else '',  # User_Last_Activity
+                    quiz.id,  # Quiz_ID
+                    quiz.title,  # Quiz_Title
+                    quiz.description or '',  # Quiz_Description
+                    quiz.time_limit,  # Quiz_Time_Limit
+                    quiz.is_published,  # Quiz_Is_Published
+                    quiz.created_at.strftime('%Y-%m-%d %H:%M:%S') if quiz.created_at else '',  # Quiz_Created_Date
+                    subject.name if subject else '',  # Subject_Name
+                    chapter.name if chapter else '',  # Chapter_Name
+                    attempt.id,  # Attempt_ID
+                    attempt.score or 0,  # Attempt_Score
+                    attempt.started_at.strftime('%Y-%m-%d %H:%M:%S') if attempt.started_at else '',  # Attempt_Started_At
+                    attempt.completed_at.strftime('%Y-%m-%d %H:%M:%S') if attempt.completed_at else '',  # Attempt_Completed_At
+                    time_taken_minutes,  # Attempt_Time_Taken_Minutes
+                    total_questions,  # Total_Questions
+                    correct_answers,  # Correct_Answers
+                    len(user_completed),  # User_Total_Quizzes
+                    round(user_avg, 1),  # User_Average_Score
+                    round(user_best, 1),  # User_Best_Score
+                    '',  # Subject_Performance (empty for individual attempts)
+                    ''   # Monthly_Activity_Count (empty for individual attempts)
+                ]
+                writer.writerow(row)
+                rows_written += 1
+            
+            print(f"Detailed attempt data written: {len(all_attempts)} attempts")
+            
+            # SECTION 3: QUIZ METADATA
+            print("Writing quiz metadata...")
+            
+            all_quizzes = Quiz.query.all()
+            for quiz in all_quizzes:
+                chapter = Chapter.query.get(quiz.chapter_id) if quiz.chapter_id else None
+                subject = Subject.query.get(chapter.subject_id) if chapter and chapter.subject_id else None
+                creator = User.query.get(quiz.created_by) if quiz.created_by else None
+                
+                # Quiz statistics
+                quiz_attempts = UserQuizAttempt.query.filter_by(quiz_id=quiz.id).all()
+                completed_quiz_attempts = [a for a in quiz_attempts if a.completed_at is not None]
+                quiz_scores = [a.score for a in completed_quiz_attempts if a.score is not None]
+                
+                avg_quiz_score = sum(quiz_scores) / len(quiz_scores) if quiz_scores else 0
+                total_attempts = len(completed_quiz_attempts)
+                question_count = Question.query.filter_by(quiz_id=quiz.id).count()
+                
+                # Write quiz metadata row
+                row = [
+                    'QUIZ_METADATA',  # Export_Type
+                    creator.id if creator else '',  # User_ID (creator)
+                    creator.email if creator else '',  # User_Email (creator)
+                    creator.full_name if creator else '',  # User_Full_Name (creator)
+                    'admin' if creator and any(r.name == 'admin' for r in creator.roles) else 'user',  # User_Role (creator)
+                    '',  # User_Active (not applicable)
+                    '',  # User_Created_Date (not applicable)
+                    '',  # User_Last_Activity (not applicable)
+                    quiz.id,  # Quiz_ID
+                    quiz.title,  # Quiz_Title
+                    quiz.description or '',  # Quiz_Description
+                    quiz.time_limit,  # Quiz_Time_Limit
+                    quiz.is_published,  # Quiz_Is_Published
+                    quiz.created_at.strftime('%Y-%m-%d %H:%M:%S') if quiz.created_at else '',  # Quiz_Created_Date
+                    subject.name if subject else '',  # Subject_Name
+                    chapter.name if chapter else '',  # Chapter_Name
+                    '',  # Attempt_ID (not applicable)
+                    round(avg_quiz_score, 1),  # Attempt_Score (average for this quiz)
+                    '',  # Attempt_Started_At (not applicable)
+                    '',  # Attempt_Completed_At (not applicable)
+                    '',  # Attempt_Time_Taken_Minutes (not applicable)
+                    question_count,  # Total_Questions (in this quiz)
+                    '',  # Correct_Answers (not applicable)
+                    total_attempts,  # User_Total_Quizzes (total attempts for this quiz)
+                    round(avg_quiz_score, 1),  # User_Average_Score (average score for this quiz)
+                    max(quiz_scores) if quiz_scores else 0,  # User_Best_Score (best score for this quiz)
+                    '',  # Subject_Performance (not applicable)
+                    ''   # Monthly_Activity_Count (not applicable)
+                ]
+                writer.writerow(row)
+                rows_written += 1
+            
+            print(f"Quiz metadata written: {len(all_quizzes)} quizzes")
+        
+        print(f"CSV export completed. Total rows: {rows_written}")
+        
+        # Calculate file size
+        file_size = os.path.getsize(filepath)
+        file_size_mb = file_size / (1024 * 1024)
+        
+        # Generate download URL
+        download_url = f"http://localhost:5000/static/exports/{filename}"
+        
+        # Get all admin users to notify
+        admin_users = User.query.filter(User.roles.any(Role.name == 'admin')).all()
+        
+        # Send completion notification to all admins
+        notifications_sent = 0
+        for admin in admin_users:
+            success = send_export_completion_email(
+                admin, 
+                filename, 
+                download_url, 
+                rows_written, 
+                file_size_mb,
+                timestamp
+            )
+            if success:
+                notifications_sent += 1
+        
+        result_message = f"CSV export completed - {rows_written} rows, {file_size_mb:.2f}MB, {notifications_sent} notifications sent"
+        current_app.logger.info(result_message)
+        print(f"=== {result_message} ===")
+        
+        return {
+            'status': 'completed',
+            'filename': filename,
+            'download_url': download_url,
+            'rows_exported': rows_written,
+            'file_size_mb': round(file_size_mb, 2),
+            'notifications_sent': notifications_sent,
+            'timestamp': timestamp,
+            'export_sections': ['USER_SUMMARY', 'QUIZ_ATTEMPT', 'QUIZ_METADATA']
+        }
+        
+    except Exception as e:
+        error_message = f"Error in CSV export task: {str(e)}"
+        current_app.logger.error(error_message)
+        print(f"❌ {error_message}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        print(traceback.format_exc())
+        
+        # Notify admins of failure
+        try:
+            admin_users = User.query.filter(User.roles.any(Role.name == 'admin')).all()
+            for admin in admin_users:
+                send_export_failure_email(admin, str(e))
+        except:
+            pass  # Don't let notification failure break the main error handling
+        
+        return {
+            'status': 'failed',
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }
+
+def send_export_completion_email(admin_user, filename, download_url, total_rows, file_size_mb, timestamp):
+    """Send email notification when export is completed"""
+    try:
+        subject = "✅ Quiz Master CSV Export Completed"
+        
+        # Format timestamp for display
+        export_time = datetime.strptime(timestamp, "%Y%m%d_%H%M%S")
+        formatted_time = export_time.strftime("%B %d, %Y at %I:%M %p")
+        
+        body = f"""
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Export Completed</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white;">
+                
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 30px; text-align: center; color: white;">
+                    <h1 style="margin: 0; font-size: 28px; font-weight: 700;">✅ Export Completed</h1>
+                    <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your CSV export is ready for download</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 30px;">
+                    <h2 style="color: #333; margin: 0 0 20px 0;">Hi {admin_user.full_name}!</h2>
+                    
+                    <p style="font-size: 16px; color: #6c757d; margin-bottom: 25px;">
+                        Your requested CSV export has been completed successfully. Here are the details:
+                    </p>
+                    
+                    <!-- Export Details -->
+                    <div style="background-color: #f8f9fa; border-radius: 10px; padding: 20px; margin: 20px 0;">
+                        <h3 style="color: #333; margin: 0 0 15px 0; font-size: 18px;">📊 Export Details</h3>
+                        
+                        <div style="display: grid; gap: 12px;">
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #dee2e6;">
+                                <span style="font-weight: 600; color: #495057;">File Name:</span>
+                                <span style="color: #6c757d;">{filename}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #dee2e6;">
+                                <span style="font-weight: 600; color: #495057;">Export Time:</span>
+                                <span style="color: #6c757d;">{formatted_time}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #dee2e6;">
+                                <span style="font-weight: 600; color: #495057;">Total Records:</span>
+                                <span style="color: #6c757d;">{total_rows:,} rows</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                                <span style="font-weight: 600; color: #495057;">File Size:</span>
+                                <span style="color: #6c757d;">{file_size_mb:.2f} MB</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Data Sections -->
+                    <div style="background-color: #e7f3ff; border-radius: 10px; padding: 20px; margin: 20px 0;">
+                        <h3 style="color: #0066cc; margin: 0 0 15px 0; font-size: 18px;">📋 Data Sections Included</h3>
+                        <ul style="margin: 0; padding-left: 20px; color: #495057;">
+                            <li style="margin-bottom: 8px;"><strong>User Summary:</strong> Complete user profiles with performance statistics</li>
+                            <li style="margin-bottom: 8px;"><strong>Quiz Attempts:</strong> Detailed attempt data with scores and timing</li>
+                            <li style="margin-bottom: 8px;"><strong>Quiz Metadata:</strong> Quiz information with aggregate statistics</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Download Button -->
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{download_url}" 
+                           style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+                                  color: white; 
+                                  padding: 15px 30px; 
+                                  text-decoration: none; 
+                                  border-radius: 25px; 
+                                  font-weight: bold;
+                                  font-size: 16px;
+                                  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+                                  display: inline-block;">
+                            📥 Download CSV File
+                        </a>
+                    </div>
+                    
+                    <!-- Important Notes -->
+                    <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                        <h4 style="color: #856404; margin: 0 0 10px 0; font-size: 16px;">⚠️ Important Notes:</h4>
+                        <ul style="margin: 0; padding-left: 20px; color: #856404; font-size: 14px;">
+                            <li>This export contains sensitive data. Please handle it securely.</li>
+                            <li>The download link will be available for 30 days.</li>
+                            <li>File includes three data types: USER_SUMMARY, QUIZ_ATTEMPT, and QUIZ_METADATA.</li>
+                        </ul>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #6c757d; text-align: center; margin-top: 30px;">
+                        Thank you for using Quiz Master!<br>
+                        <strong>Quiz Master Admin Team</strong>
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return send_email(admin_user.email, subject, body)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error sending export completion email to {admin_user.email}: {str(e)}")
+        return False
+
+def send_export_failure_email(admin_user, error_message):
+    """Send email notification when export fails"""
+    try:
+        subject = "❌ Quiz Master CSV Export Failed"
+        
+        body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); padding: 20px; text-align: center; color: white;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">❌ Export Failed</h1>
+                <p style="color: #f8f9fa; margin: 10px 0 0 0;">There was an issue with your CSV export</p>
+            </div>
+            
+            <div style="padding: 30px; background-color: white;">
+                <h2 style="color: #495057;">Hi {admin_user.full_name},</h2>
+                
+                <p style="font-size: 16px; color: #6c757d;">
+                    We're sorry, but your CSV export request failed to complete. 
+                </p>
+                
+                <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                    <h4 style="color: #721c24; margin: 0 0 10px 0;">Error Details:</h4>
+                    <p style="color: #721c24; margin: 0; font-family: monospace; font-size: 14px;">{error_message}</p>
+                </div>
+                
+                <p style="font-size: 16px; color: #6c757d;">
+                    Please try again later or contact the system administrator if the problem persists.
+                </p>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="http://localhost:5000/admin" 
+                       style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
+                              color: white; 
+                              padding: 15px 30px; 
+                              text-decoration: none; 
+                              border-radius: 25px; 
+                              font-weight: bold;
+                              font-size: 16px;">
+                        🔄 Try Again
+                    </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #6c757d; text-align: center; margin-top: 20px;">
+                    Quiz Master Admin Team
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return send_email(admin_user.email, subject, body)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error sending export failure email to {admin_user.email}: {str(e)}")
+        return False

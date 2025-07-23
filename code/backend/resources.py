@@ -1280,7 +1280,83 @@ class QuizExportAPI(Resource):
     @auth_required('token')
     @roles_required('admin')
     def post(self):
-        return {'message': 'Export functionality will be implemented with Celery'}, 501
+        """Trigger async CSV export job"""
+        try:
+            # Import here to avoid circular imports
+            from backend.tasks import export_quiz_data_csv
+            
+            # Get the current app's celery instance
+            celery = current_app.celery
+            
+            # Trigger the async export task
+            task = celery.send_task('backend.tasks.export_quiz_data_csv')
+            
+            current_app.logger.info(f"CSV export task triggered by {current_user.email}. Task ID: {task.id}")
+            
+            return {
+                'status': 'success',
+                'message': 'CSV export job has been started. You will receive an email when it completes.',
+                'task_id': task.id,
+                'estimated_time': '2-5 minutes depending on data size',
+                'notification': 'Email notification will be sent to all admin users upon completion'
+            }, 202  # 202 Accepted - request has been accepted for processing
+            
+        except Exception as e:
+            current_app.logger.error(f"Error triggering CSV export: {str(e)}")
+            return {
+                'status': 'error',
+                'message': f'Failed to start export job: {str(e)}'
+            }, 500
+        
+
+
+class ExportStatusAPI(Resource):
+    @auth_required('token')
+    @roles_required('admin')
+    def get(self, task_id):
+        """Check status of export task"""
+        try:
+            celery = current_app.celery
+            task_result = celery.AsyncResult(task_id)
+            
+            if task_result.state == 'PENDING':
+                response = {
+                    'status': 'pending',
+                    'message': 'Export task is queued and will start soon...'
+                }
+            elif task_result.state == 'PROGRESS':
+                response = {
+                    'status': 'in_progress',
+                    'message': 'Export is currently running...',
+                    'progress': task_result.info.get('progress', 0) if task_result.info else 0
+                }
+            elif task_result.state == 'SUCCESS':
+                result = task_result.result
+                response = {
+                    'status': 'completed',
+                    'message': 'Export completed successfully',
+                    'result': result
+                }
+            elif task_result.state == 'FAILURE':
+                response = {
+                    'status': 'failed',
+                    'message': 'Export failed',
+                    'error': str(task_result.info)
+                }
+            else:
+                response = {
+                    'status': task_result.state.lower(),
+                    'message': f'Task state: {task_result.state}'
+                }
+                
+            return response
+            
+        except Exception as e:
+            current_app.logger.error(f"Error checking export status: {str(e)}")
+            return {
+                'status': 'error',
+                'message': f'Failed to check export status: {str(e)}'
+            }, 500
 
 class UserActivationAPI(Resource):
     @auth_required('token')
@@ -1343,4 +1419,5 @@ api.add_resource(UserAttemptsAPI, '/user/attempts')
 # Make sure this line is at the bottom of the file and not duplicated
 api.add_resource(AdminDashboardAPI, '/admin/dashboard')
 api.add_resource(QuizExportAPI, '/admin/quizzes/export')
+api.add_resource(ExportStatusAPI, '/admin/export/status/<string:task_id>')
 api.add_resource(UserActivationAPI, '/admin/users/<int:user_id>/activate')
