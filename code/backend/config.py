@@ -16,7 +16,7 @@ class LocalDevelopmentConfig(Config):
     MAIL_PORT = 587
     MAIL_USE_TLS = True
     MAIL_USERNAME = 'sahapiyush5@gmail.com'  
-    MAIL_PASSWORD = 'fhju cfeb axqd wqsl'   
+    MAIL_PASSWORD = 'ewue amof ngnw nuhs'   
     MAIL_DEFAULT_SENDER = 'Quiz-Master <sahapiyush5@gmail.com>'
 
     # Celery Configuration
