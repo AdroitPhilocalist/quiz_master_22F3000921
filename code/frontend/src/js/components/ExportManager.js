@@ -141,20 +141,20 @@ export default {
         formatDate(dateString) {
             return new Date(dateString).toLocaleString();
         },
-        downloadFile(downloadUrl) {
+        downloadFile(originalUrl) {
             try {
-                console.log('Downloading file from:', downloadUrl);
                 
-                // Method 1: Create invisible link and click it
-                const link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = ''; // This attribute forces download
-                link.style.display = 'none';
+                const filename = originalUrl.substring(originalUrl.lastIndexOf('/') + 1);
+
+                const downloadUrl = `http://127.0.0.1:5000/api/export/download/${filename}`;
                 
-                // Add to DOM, click, then remove
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                // Initiate download by creating an anchor element
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = filename; // optional
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
                 
                 this.showToast('Download started successfully!', 'Success', 'success');
                 

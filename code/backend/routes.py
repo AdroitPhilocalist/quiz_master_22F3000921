@@ -13,7 +13,15 @@ def register_routes(app):
     @app.route('/')
     def home():
         return render_template('index.html')
-    
+    # @app.route('/exports/<path:filename>')
+    # # @auth_required('token')  # Optional: restrict to logged-in users
+    # # @roles_required('admin')  # Optional: restrict to admin only
+    # def download_export(filename):
+    #     export_folder = os.path.join(os.getcwd(), 'static', 'exports')
+    #     try:
+    #         return send_from_directory(export_folder, filename, as_attachment=True)
+    #     except FileNotFoundError:
+    #         abort(404)
     @app.route('/api/export/download/<filename>')
     # @auth_required('token')  # Keep commented for now to test
     # @roles_required('admin')
@@ -29,7 +37,7 @@ def register_routes(app):
             
             # Get the project root directory (where app.py is located)
             project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            exports_dir = os.path.join(project_root, 'static', 'exports')
+            exports_dir = os.path.join(project_root, 'frontend', 'static', 'exports')
             filepath = os.path.join(exports_dir, filename)
             
             print(f"Looking for file at: {filepath}")

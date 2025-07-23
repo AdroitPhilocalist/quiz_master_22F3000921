@@ -801,6 +801,7 @@ def export_quiz_data_csv():
         
         # Get the project root directory (where app.py is located)
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        project_root+= '/frontend'
         static_dir = os.path.join(project_root, 'static')
         export_dir = os.path.join(static_dir, 'exports')
         
@@ -1059,8 +1060,8 @@ def export_quiz_data_csv():
         file_size_mb = file_size / (1024 * 1024)
         
         # Generate download URL
-        download_url = f"http://localhost:5000/api/export/download/{filename}"
-        
+        download_url = f"127.0.0.1:5000/exports/{filename}"
+
         print(f"Download URL: {download_url}")
         print(f"File saved at: {filepath}")
         print(f"File size: {file_size_mb:.2f} MB")
@@ -1204,7 +1205,7 @@ def send_export_completion_email(admin_user, filename, download_url, total_rows,
                                   font-size: 16px;
                                   box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
                                   display: inline-block;">
-                            📥 Download CSV File
+                            📥 Download shalakaakakakakak
                         </a>
                     </div>
                     
