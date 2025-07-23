@@ -74,7 +74,46 @@ def init_database():
         
         db.session.commit()
         print("✅ Database initialized successfully")
+@app.route('/test-static')
+def test_static():
+    """Test route to check static file serving"""
+    import os
+    static_path = app.static_folder
+    exports_path = os.path.join(static_path, 'exports')
+    
+    # List files in exports directory
+    files = []
+    if os.path.exists(exports_path):
+        files = os.listdir(exports_path)
+    
+    return {
+        'static_folder': static_path,
+        'exports_path': exports_path,
+        'exports_exist': os.path.exists(exports_path),
+        'files_in_exports': files,
+        'static_url_path': app.static_url_path
+    }
 
+@app.route('/debug/export/<filename>')
+def debug_export(filename):
+    """Debug route to test export file access"""
+    import os
+    from flask import send_from_directory, abort
+    
+    try:
+        exports_dir = os.path.join(app.static_folder, 'exports')
+        filepath = os.path.join(exports_dir, filename)
+        
+        print(f"Debug: Looking for file at {filepath}")
+        print(f"Debug: File exists: {os.path.exists(filepath)}")
+        print(f"Debug: File readable: {os.access(filepath, os.R_OK) if os.path.exists(filepath) else 'N/A'}")
+        
+        if os.path.exists(filepath):
+            return send_from_directory(exports_dir, filename, as_attachment=True)
+        else:
+            abort(404)
+    except Exception as e:
+        return {'error': str(e), 'filepath': filepath}, 500
 if __name__ == '__main__':
     # Initialize database first
     init_database()

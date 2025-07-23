@@ -800,12 +800,19 @@ def export_quiz_data_csv():
         filename = f"quiz_master_export_{timestamp}.csv"
         
         # Create exports directory if it doesn't exist
-        export_dir = os.path.join(current_app.static_folder, 'exports')
+        app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        static_dir = os.path.join(app_root, 'static')
+        export_dir = os.path.join(static_dir, 'exports')
+        
+        # Create directories if they don't exist
+        os.makedirs(static_dir, exist_ok=True)
         os.makedirs(export_dir, exist_ok=True)
         
         filepath = os.path.join(export_dir, filename)
         
         print(f"Generating export file: {filename}")
+        print(f"Export directory: {export_dir}")
+        print(f"Full file path: {filepath}")
         
         # Open CSV file for writing
         with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
@@ -1042,6 +1049,9 @@ def export_quiz_data_csv():
         
         # Generate download URL
         download_url = f"http://localhost:5000/static/exports/{filename}"
+        
+        print(f"Download URL: {download_url}")
+        print(f"File saved at: {filepath}")
         
         # Get all admin users to notify
         admin_users = User.query.filter(User.roles.any(Role.name == 'admin')).all()

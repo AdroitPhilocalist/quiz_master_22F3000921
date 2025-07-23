@@ -201,7 +201,7 @@ export default {
                 <!-- Export Information -->
                 <div class="row">
                     <div class="col-12">
-                        <div class="bg-info-light p-3 rounded mb-3">
+                        <div class="bg-info-light p-3 rounded mb-3" style="background-color: #e7f3ff;">
                             <h6 class="text-info mb-2">
                                 <i class="fas fa-info-circle me-2"></i>
                                 Export Information
@@ -275,25 +275,25 @@ export default {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="export in exportHistory.slice(0, 5)" :key="export.timestamp">
-                                        <td>{{ formatDate(export.timestamp) }}</td>
+                                    <tr v-for="exportItem in exportHistory.slice(0, 5)" :key="exportItem.timestamp">
+                                        <td>{{ formatDate(exportItem.timestamp) }}</td>
                                         <td>
-                                            <span :class="export.status === 'completed' ? 'badge bg-success' : 'badge bg-danger'">
-                                                {{ export.status }}
+                                            <span :class="exportItem.status === 'completed' ? 'badge bg-success' : 'badge bg-danger'">
+                                                {{ exportItem.status }}
                                             </span>
                                         </td>
                                         <td>
-                                            <small v-if="export.result">
-                                                {{ export.result.rows_exported?.toLocaleString() }} rows, 
-                                                {{ formatFileSize(export.result.file_size_mb) }}
+                                            <small v-if="exportItem.result">
+                                                {{ exportItem.result.rows_exported?.toLocaleString() }} rows, 
+                                                {{ formatFileSize(exportItem.result.file_size_mb) }}
                                             </small>
-                                            <small v-else-if="export.error" class="text-danger">
-                                                {{ export.error }}
+                                            <small v-else-if="exportItem.error" class="text-danger">
+                                                {{ exportItem.error }}
                                             </small>
                                         </td>
                                         <td>
-                                            <a v-if="export.result?.download_url" 
-                                               :href="export.result.download_url"
+                                            <a v-if="exportItem.result?.download_url" 
+                                               :href="exportItem.result.download_url"
                                                class="btn btn-sm btn-outline-primary"
                                                target="_blank">
                                                 Download

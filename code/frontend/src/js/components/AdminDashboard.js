@@ -1,4 +1,8 @@
+import ExportManager from './ExportManager.js';
 export default {
+    components: {
+        ExportManager
+    },
     data() {
         return {
             userName: localStorage.getItem('full_name') || 'Admin',
@@ -104,30 +108,30 @@ export default {
               toastEl.remove();
             });
         },
-        async exportQuizzes() {
-            this.loading = true;
-            try {
-                const response = await axios.post('/api/admin/quizzes/export', {}, {
-                    headers: {
-                        'Authentication-Token': localStorage.getItem('token'),
-                        'Content-Type': 'application/json'
-                    }
-                });
+        // async exportQuizzes() {
+        //     this.loading = true;
+        //     try {
+        //         const response = await axios.post('/api/admin/quizzes/export', {}, {
+        //             headers: {
+        //                 'Authentication-Token': localStorage.getItem('token'),
+        //                 'Content-Type': 'application/json'
+        //             }
+        //         });
                 
-                // Check if we have a download URL in the response
-                if (response.data.download_url) {
-                    alert(`Export completed successfully. You can download the file at: ${response.data.download_url}`);
+        //         // Check if we have a download URL in the response
+        //         if (response.data.download_url) {
+        //             alert(`Export completed successfully. You can download the file at: ${response.data.download_url}`);
           
-                } else {
-                    alert(response.data.message || "Export started successfully. You will receive an email when it is ready.");
-                }
-            } catch (error) {
-                console.error('Export error:', error);
-                alert(`Export failed: ${error.response?.data?.message || 'Unknown error'}`);
-            } finally {
-                this.loading = false;
-            }
-        },
+        //         } else {
+        //             alert(response.data.message || "Export started successfully. You will receive an email when it is ready.");
+        //         }
+        //     } catch (error) {
+        //         console.error('Export error:', error);
+        //         alert(`Export failed: ${error.response?.data?.message || 'Unknown error'}`);
+        //     } finally {
+        //         this.loading = false;
+        //     }
+        // },
         logout() {
             this.$emit('logout');
         },
@@ -254,9 +258,7 @@ export default {
                 <div class="container-fluid px-4">
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
                         <h1 class="h3 mb-0 text-gray-800">Admin Dashboard</h1>
-                        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" @click.prevent="exportQuizzes">
-                            <i class="fas fa-download fa-sm text-white-50 me-1"></i> Export Quizzes
-                        </a>
+                        
                     </div>
                     
                     <div v-if="loading" class="text-center py-5">
@@ -530,7 +532,13 @@ export default {
                             </div>
                         </div>
                     </div>
+                     <div class="row mt-4">
+            <div class="col-12">
+                <ExportManager />
+            </div>
+        </div>
                 </div>
+               
             </div>
         </div>
     `
