@@ -141,6 +141,28 @@ export default {
         formatDate(dateString) {
             return new Date(dateString).toLocaleString();
         },
+        downloadFile(downloadUrl) {
+            try {
+                console.log('Downloading file from:', downloadUrl);
+                
+                // Method 1: Create invisible link and click it
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = ''; // This attribute forces download
+                link.style.display = 'none';
+                
+                // Add to DOM, click, then remove
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                this.showToast('Download started successfully!', 'Success', 'success');
+                
+            } catch (error) {
+                console.error('Download error:', error);
+                this.showToast('Download failed. Please try again.', 'Error', 'danger');
+            }
+        },
 
         formatFileSize(mb) {
             if (mb < 1) {
@@ -248,12 +270,13 @@ export default {
                                     <small>{{ formatFileSize(lastExportResult.file_size_mb) }}</small>
                                 </div>
                                 <div class="col-md-3">
-                                    <a :href="lastExportResult.download_url" 
-                                       class="btn btn-sm btn-outline-success"
-                                       target="_blank">
+                                    <!-- FIXED: Use downloadFile method instead of direct link -->
+                                    <button 
+                                        class="btn btn-sm btn-outline-success"
+                                        @click="downloadFile(lastExportResult.download_url)">
                                         <i class="fas fa-download me-1"></i>
                                         Download
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -292,12 +315,13 @@ export default {
                                             </small>
                                         </td>
                                         <td>
-                                            <a v-if="exportItem.result?.download_url" 
-                                               :href="exportItem.result.download_url"
-                                               class="btn btn-sm btn-outline-primary"
-                                               target="_blank">
+                                            <!-- FIXED: Use downloadFile method instead of direct link -->
+                                            <button 
+                                                v-if="exportItem.result?.download_url" 
+                                                class="btn btn-sm btn-outline-primary"
+                                                @click="downloadFile(exportItem.result.download_url)">
                                                 Download
-                                            </a>
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>

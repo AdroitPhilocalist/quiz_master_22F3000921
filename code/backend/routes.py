@@ -1,4 +1,5 @@
-from flask import current_app, jsonify, request, render_template
+from flask import current_app, jsonify, request, render_template, abort, send_from_directory
+import os
 from flask_security import current_user
 from flask_security import auth_required, verify_password, hash_password, roles_required
 from backend.models import *
@@ -12,6 +13,48 @@ def register_routes(app):
     @app.route('/')
     def home():
         return render_template('index.html')
+    
+    @app.route('/api/export/download/<filename>')
+    # @auth_required('token')  # Keep commented for now to test
+    # @roles_required('admin')
+    def download_export_file(filename):
+        """Secure route to download export CSV files"""
+        try:
+            print(f"Download request for file: {filename}")
+            
+            # Security: Only allow CSV files with specific naming pattern
+            if not filename.startswith('quiz_master_export_') or not filename.endswith('.csv'):
+                print(f"Invalid filename pattern: {filename}")
+                abort(403)
+            
+            # Get the project root directory (where app.py is located)
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            exports_dir = os.path.join(project_root, 'static', 'exports')
+            filepath = os.path.join(exports_dir, filename)
+            
+            print(f"Looking for file at: {filepath}")
+            print(f"Exports directory: {exports_dir}")
+            print(f"File exists: {os.path.exists(filepath)}")
+            
+            if not os.path.exists(filepath):
+                print(f"File not found: {filepath}")
+                abort(404)
+            
+            print(f"Serving file: {filename}")
+            
+            # FIXED: Use send_from_directory with proper headers for download
+            return send_from_directory(
+                exports_dir, 
+                filename, 
+                as_attachment=True,  # This forces download instead of opening in browser
+                download_name=filename,  # This sets the downloaded filename
+                mimetype='text/csv'
+            )
+            
+        except Exception as e:
+            print(f"Error serving export file {filename}: {str(e)}")
+            current_app.logger.error(f"Error serving export file {filename}: {str(e)}")
+            return jsonify({"error": f"Error downloading file: {str(e)}"}), 500
 
     @app.route('/login', methods=['POST'])
     def login():

@@ -799,9 +799,9 @@ def export_quiz_data_csv():
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"quiz_master_export_{timestamp}.csv"
         
-        # Create exports directory if it doesn't exist
-        app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        static_dir = os.path.join(app_root, 'static')
+        # Get the project root directory (where app.py is located)
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        static_dir = os.path.join(project_root, 'static')
         export_dir = os.path.join(static_dir, 'exports')
         
         # Create directories if they don't exist
@@ -810,9 +810,15 @@ def export_quiz_data_csv():
         
         filepath = os.path.join(export_dir, filename)
         
-        print(f"Generating export file: {filename}")
+        print(f"Project root: {project_root}")
+        print(f"Static directory: {static_dir}")
         print(f"Export directory: {export_dir}")
+        print(f"Generating export file: {filename}")
         print(f"Full file path: {filepath}")
+        
+        # Verify directory is writable
+        if not os.access(export_dir, os.W_OK):
+            raise Exception(f"Export directory is not writable: {export_dir}")
         
         # Open CSV file for writing
         with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
@@ -1041,6 +1047,11 @@ def export_quiz_data_csv():
             
             print(f"Quiz metadata written: {len(all_quizzes)} quizzes")
         
+        if not os.path.exists(filepath):
+            raise Exception(f"Export file was not created: {filepath}")
+        
+        if not os.access(filepath, os.R_OK):
+            raise Exception(f"Export file is not readable: {filepath}")
         print(f"CSV export completed. Total rows: {rows_written}")
         
         # Calculate file size
@@ -1048,13 +1059,20 @@ def export_quiz_data_csv():
         file_size_mb = file_size / (1024 * 1024)
         
         # Generate download URL
-        download_url = f"http://localhost:5000/static/exports/{filename}"
+        download_url = f"http://localhost:5000/api/export/download/{filename}"
         
         print(f"Download URL: {download_url}")
         print(f"File saved at: {filepath}")
-        
+        print(f"File size: {file_size_mb:.2f} MB")
+        try:
+            with open(filepath, 'r') as test_file:
+                first_line = test_file.readline()
+                print(f"File verification successful. First line: {first_line[:50]}...")
+        except Exception as e:
+            print(f"Warning: Could not verify file accessibility: {e}")
         # Get all admin users to notify
         admin_users = User.query.filter(User.roles.any(Role.name == 'admin')).all()
+        
         
         # Send completion notification to all admins
         notifications_sent = 0
@@ -1122,6 +1140,23 @@ def send_export_completion_email(admin_user, filename, download_url, total_rows,
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Export Completed</title>
+            <script>
+                function downloadFile(url) {{
+                    try {{
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = '';
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }} catch (error) {{
+                        console.error('Download error:', error);
+                        // Fallback: open in new tab
+                        window.open(url, '_blank');
+                    }}
+                }}
+            </script>
         </head>
         <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa;">
             <div style="max-width: 600px; margin: 0 auto; background-color: white;">
@@ -1176,18 +1211,27 @@ def send_export_completion_email(admin_user, filename, download_url, total_rows,
                     
                     <!-- Download Button -->
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{download_url}" 
-                           style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
-                                  color: white; 
-                                  padding: 15px 30px; 
-                                  text-decoration: none; 
-                                  border-radius: 25px; 
-                                  font-weight: bold;
-                                  font-size: 16px;
-                                  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
-                                  display: inline-block;">
+                        <!-- FIXED: Use JavaScript function for download -->
+                        <button onclick="downloadFile('{download_url}')" 
+                                style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+                                       color: white; 
+                                       padding: 15px 30px; 
+                                       border: none;
+                                       border-radius: 25px; 
+                                       font-weight: bold;
+                                       font-size: 16px;
+                                       box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+                                       cursor: pointer;
+                                       display: inline-block;">
                             📥 Download CSV File
-                        </a>
+                        </button>
+                        
+                        <!-- Fallback direct link -->
+                        <br><br>
+                        <small style="color: #6c757d;">
+                            If the button doesn't work, try this direct link: 
+                            <a href="{download_url}" style="color: #007bff;">Download CSV</a>
+                        </small>
                     </div>
                     
                     <!-- Important Notes -->
