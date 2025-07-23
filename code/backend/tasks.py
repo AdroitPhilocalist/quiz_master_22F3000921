@@ -1140,23 +1140,6 @@ def send_export_completion_email(admin_user, filename, download_url, total_rows,
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Export Completed</title>
-            <script>
-                function downloadFile(url) {{
-                    try {{
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = '';
-                        link.style.display = 'none';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    }} catch (error) {{
-                        console.error('Download error:', error);
-                        // Fallback: open in new tab
-                        window.open(url, '_blank');
-                    }}
-                }}
-            </script>
         </head>
         <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f7fa;">
             <div style="max-width: 600px; margin: 0 auto; background-color: white;">
@@ -1211,27 +1194,18 @@ def send_export_completion_email(admin_user, filename, download_url, total_rows,
                     
                     <!-- Download Button -->
                     <div style="text-align: center; margin: 30px 0;">
-                        <!-- FIXED: Use JavaScript function for download -->
-                        <button onclick="downloadFile('{download_url}')" 
-                                style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
-                                       color: white; 
-                                       padding: 15px 30px; 
-                                       border: none;
-                                       border-radius: 25px; 
-                                       font-weight: bold;
-                                       font-size: 16px;
-                                       box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
-                                       cursor: pointer;
-                                       display: inline-block;">
+                        <a href="{download_url}" 
+                           style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+                                  color: white; 
+                                  padding: 15px 30px; 
+                                  text-decoration: none; 
+                                  border-radius: 25px; 
+                                  font-weight: bold;
+                                  font-size: 16px;
+                                  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+                                  display: inline-block;">
                             📥 Download CSV File
-                        </button>
-                        
-                        <!-- Fallback direct link -->
-                        <br><br>
-                        <small style="color: #6c757d;">
-                            If the button doesn't work, try this direct link: 
-                            <a href="{download_url}" style="color: #007bff;">Download CSV</a>
-                        </small>
+                        </a>
                     </div>
                     
                     <!-- Important Notes -->
