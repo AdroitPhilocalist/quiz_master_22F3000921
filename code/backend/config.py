@@ -25,3 +25,8 @@ class LocalDevelopmentConfig(Config):
     
     # Redis Configuration
     REDIS_URL = 'redis://localhost:6379/0'
+
+    CACHE_TYPE = 'RedisCache'
+    CACHE_REDIS_URL = 'redis://localhost:6379/2'  # Use different Redis database for cache
+    CACHE_DEFAULT_TIMEOUT = 300  # 5 minutes default cache timeout
+    CACHE_KEY_PREFIX = 'quiz_master_'

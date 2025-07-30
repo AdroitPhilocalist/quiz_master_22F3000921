@@ -13,6 +13,59 @@ def register_routes(app):
     @app.route('/')
     def home():
         return render_template('index.html')
+    
+
+
+
+    @app.route('/api/debug/cache-status')
+    # @auth_required('token')
+    # @roles_required('admin')
+    def cache_status():
+        """Debug endpoint to check cache status (development only)"""
+        if not app.debug:
+            return jsonify({"message": "Only available in debug mode"}), 403
+        
+        try:
+            # Test cache connectivity
+            test_key = 'cache_test'
+            test_value = {'test': True, 'timestamp': datetime.now().isoformat()}
+            
+            # Set test value
+            app.cache.set(test_key, test_value, timeout=60)
+            
+            # Get test value
+            retrieved = app.cache.get(test_key)
+            
+            # Get cache info
+            cache_info = {
+                'cache_type': app.config.get('CACHE_TYPE'),
+                'cache_timeout': app.config.get('CACHE_DEFAULT_TIMEOUT'),
+                'redis_url': app.config.get('CACHE_REDIS_URL'),
+                'test_connectivity': retrieved == test_value,
+                'current_cached_keys': [
+                    'admin_dashboard_stats',
+                    'quiz_detail_*_admin',
+                    'quiz_detail_*_user'
+                ]
+            }
+            
+            return jsonify(cache_info)
+            
+        except Exception as e:
+            return jsonify({
+                'error': str(e),
+                'cache_working': False
+            }), 500
+    
+
+
+
+
+
+
+
+
+
     # @app.route('/exports/<path:filename>')
     # # @auth_required('token')  # Optional: restrict to logged-in users
     # # @roles_required('admin')  # Optional: restrict to admin only

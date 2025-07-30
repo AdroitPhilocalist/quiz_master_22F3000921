@@ -562,6 +562,13 @@ class AdminDashboardAPI(Resource):
     @auth_required('token')
     @roles_required('admin')
     def get(self):
+        cache_key = 'admin_dashboard_stats'
+        cached_data = current_app.cache.get(cache_key)
+        if cached_data:
+            print("📋 Admin Dashboard: Serving from cache")
+            return cached_data
+
+
         # Get total counts
         total_users = User.query.count()
         total_quizzes = Quiz.query.count()
@@ -603,7 +610,7 @@ class AdminDashboardAPI(Resource):
                 'completed_at': attempt.completed_at.isoformat()
             })
         
-        return {
+        dashboard_data = {
             'stats': {
                 'total_users': total_users,
                 'total_quizzes': total_quizzes,
@@ -613,8 +620,16 @@ class AdminDashboardAPI(Resource):
                 'average_score': average_score
             },
             'recent_quizzes': recent_quizzes,
-            'recent_attempts': recent_attempts
+            'recent_attempts': recent_attempts,
+            'cached_at': datetime.now().isoformat(),
+            'cache_info': 'Fresh data generated'
         }
+        
+        # Cache the data for 2 minutes (120 seconds)
+        current_app.cache.set(cache_key, dashboard_data, timeout=120)
+        print("📋 Admin Dashboard: Data cached for 2 minutes")
+        
+        return dashboard_data
 class UserListAPI(Resource):
     @marshal_with(user_list_fields)
     @auth_required('token')
@@ -1098,6 +1113,8 @@ class QuizStartAPI(Resource):
 class QuizDetailAPI(Resource):
     @auth_required('token')
     def get(self, quiz_id):
+
+
         quiz = Quiz.query.get(quiz_id)
         if not quiz:
             return {"message": "Quiz not found"}, 404
@@ -1195,6 +1212,9 @@ class QuizSubmitAPI(Resource):
         attempt.score = score
         attempt.completed_at = datetime.now()
         db.session.commit()
+
+        current_app.cache.delete('admin_dashboard_stats')
+        print("🗑️ Admin dashboard cache cleared due to new quiz attempt")
         
         return {
             "message": "Quiz submitted successfully",

@@ -5,13 +5,15 @@ from flask_security import Security, SQLAlchemyUserDatastore, auth_required, has
 from backend.resources import *
 from backend.celery_app import make_celery
 from datetime import datetime
-
+from flask_caching import Cache
 def createApp():
     app = Flask(__name__, template_folder='frontend', static_folder='frontend', static_url_path='/static')
     app.config.from_object(LocalDevelopmentConfig)
     
     # Model init
     db.init_app(app)
+    cache = Cache(app)
+    app.cache = cache
     
     # Flask-restful init
     api.init_app(app)
@@ -33,17 +35,14 @@ def register_tasks(celery_app):
     """Register all Celery tasks"""
     from backend.tasks import send_daily_reminders, send_monthly_activity_report, export_quiz_data_csv
     
-    # Register the task with Celery
     celery_app.task(name='backend.tasks.send_daily_reminders')(send_daily_reminders)
     celery_app.task(name='backend.tasks.send_monthly_activity_report')(send_monthly_activity_report)
     celery_app.task(name='backend.tasks.export_quiz_data_csv')(export_quiz_data_csv)
 
 app = createApp()
 
-# Make celery available globally
 celery = app.celery
-
-# Initialize database and create default users
+cache = app.cache
 def init_database():
     """Initialize database with default data"""
     with app.app_context():
@@ -77,12 +76,8 @@ def init_database():
 
 
 if __name__ == '__main__':
-    # Initialize database first
     init_database()
-    
-    # Register routes AFTER app context is established
     from backend.routes import register_routes
     register_routes(app)
     
-    # Start the Flask app
     app.run(debug=True)
