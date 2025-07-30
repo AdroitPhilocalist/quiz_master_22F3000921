@@ -403,17 +403,30 @@ def register_routes(app):
         try:
             user_id = current_user.id
             user_name = current_user.full_name
+            
+            # Get leaderboard data (all non-admin users)
             all_users = User.query.filter(
                 ~User.roles.any(Role.name == 'admin')
             ).all()
+            
             leaderboard = []
             for user in all_users:
-                attempts = UserQuizAttempt.query.filter_by(user_id=user.id).all()
-                completed_attempts = [a for a in attempts if a.completed_at is not None]
+                user_attempts = UserQuizAttempt.query.filter_by(user_id=user.id).all()
+                completed_attempts = [a for a in user_attempts if a.completed_at is not None]
                 
                 if completed_attempts:
-                    total_questions = sum(a.total_questions for a in completed_attempts)
-                    correct_answers = sum(a.correct_answers for a in completed_attempts)
+                    # Calculate accuracy for this user
+                    total_questions = 0
+                    correct_answers = 0
+                    
+                    for attempt in completed_attempts:
+                        answers = UserAnswer.query.filter_by(attempt_id=attempt.id).all()
+                        total_questions += len(answers)
+                        for answer in answers:
+                            option = Option.query.get(answer.option_id)
+                            if option and option.is_correct:
+                                correct_answers += 1
+                    
                     accuracy = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
                 else:
                     accuracy = 0
@@ -427,134 +440,135 @@ def register_routes(app):
             # Sort by accuracy (descending)
             leaderboard.sort(key=lambda x: x['accuracy'], reverse=True)
             
-            # Quiz attempt statistics
+            # Current user's quiz attempt statistics
             user_attempts = UserQuizAttempt.query.filter_by(user_id=user_id).all()
             total_attempted = len(user_attempts)
-            completed_attempts = UserQuizAttempt.query.filter(
-                UserQuizAttempt.completed_at != None,
-                UserQuizAttempt.user_id == user_id
-            ).count()
-            in_progress = total_attempted - completed_attempts
+            completed_attempts = [a for a in user_attempts if a.completed_at is not None]
+            in_progress = total_attempted - len(completed_attempts)
             
-            # Calculate average score
-            completed_with_score = UserQuizAttempt.query.filter(
-                UserQuizAttempt.user_id == user_id,
-                UserQuizAttempt.completed_at != None,
-                UserQuizAttempt.score.isnot(None)
-            ).all()
-            
+            # Calculate average score and best score
             average_score = 0
             best_score = 0
-            if completed_with_score:
-                average_score = round(sum(attempt.score for attempt in completed_with_score) / len(completed_with_score))
-                best_score = max(attempt.score for attempt in completed_with_score)
+            if completed_attempts:
+                scores = [attempt.score for attempt in completed_attempts if attempt.score is not None]
+                if scores:
+                    average_score = round(sum(scores) / len(scores))
+                    best_score = round(max(scores))
             
-            # Calculate total time spent on quizzes (in minutes)
-            total_time = 0
-            for attempt in user_attempts:
-                if attempt.completed_at:
-                    total_time += int((attempt.completed_at - attempt.started_at).total_seconds())
-            print(total_time)
+            # Calculate total time spent on quizzes (in seconds)
+            total_time_seconds = 0
+            for attempt in completed_attempts:
+                if attempt.completed_at and attempt.started_at:
+                    time_diff = attempt.completed_at - attempt.started_at
+                    total_time_seconds += int(time_diff.total_seconds())
+            
+            # Convert to minutes for display
+            total_time_minutes = total_time_seconds 
 
             # Get score history (last 10 completed attempts)
             score_history = []
-            recent_attempts = UserQuizAttempt.query.filter(
-                UserQuizAttempt.user_id == user_id,
-                UserQuizAttempt.completed_at != None,
-                UserQuizAttempt.score.isnot(None)
-            ).order_by(UserQuizAttempt.started_at.desc()).limit(10).all()
+            recent_completed = sorted(completed_attempts, key=lambda x: x.started_at, reverse=True)[:10]
             
-            for attempt in recent_attempts:
+            for attempt in recent_completed:
                 quiz = Quiz.query.get(attempt.quiz_id)
-                if quiz:
+                if quiz and attempt.score is not None:
                     score_history.append({
                         'quiz_id': quiz.id,
                         'quiz_title': quiz.title,
-                        'score': attempt.score,
+                        'score': round(attempt.score),
                         'date': attempt.started_at.strftime('%Y-%m-%d')
                     })
             
+            # Reverse to show chronological order
+            score_history.reverse()
+
             # Get subject performance
             subject_performance = []
             subjects = Subject.query.all()
             
             for subject in subjects:
-                # Get all attempts for quizzes in this subject
+                # Get all completed attempts for quizzes in this subject
                 subject_attempts = db.session.query(UserQuizAttempt)\
                     .join(Quiz, UserQuizAttempt.quiz_id == Quiz.id)\
                     .join(Chapter, Quiz.chapter_id == Chapter.id)\
                     .filter(
                         Chapter.subject_id == subject.id,
                         UserQuizAttempt.user_id == user_id,
-                        UserQuizAttempt.completed_at != None,
+                        UserQuizAttempt.completed_at.isnot(None),
                         UserQuizAttempt.score.isnot(None)
                     ).all()
                 
                 if subject_attempts:
-                    avg_score = sum(attempt.score for attempt in subject_attempts) / len(subject_attempts)
+                    # Calculate average score for this subject
+                    scores = [attempt.score for attempt in subject_attempts]
+                    avg_score = sum(scores) / len(scores)
                     
-                    # Calculate accuracy
-                    total_questions = 0
-                    correct_answers = 0
+                    # Calculate accuracy for this subject
+                    total_subject_questions = 0
+                    correct_subject_answers = 0
+                    
                     for attempt in subject_attempts:
                         answers = UserAnswer.query.filter_by(attempt_id=attempt.id).all()
-                        total_questions += len(answers)
+                        total_subject_questions += len(answers)
                         for answer in answers:
                             option = Option.query.get(answer.option_id)
                             if option and option.is_correct:
-                                correct_answers += 1
+                                correct_subject_answers += 1
                     
-                    accuracy = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
+                    accuracy = (correct_subject_answers / total_subject_questions) * 100 if total_subject_questions > 0 else 0
                     
                     subject_performance.append({
                         'subject': subject.name,
                         'average_score': round(avg_score),
                         'attempts': len(subject_attempts),
-                        'accuracy': accuracy
+                        'accuracy': round(accuracy)
                     })
-            
+
             # Get recent attempts with more details
             recent_detailed_attempts = []
-            all_recent_attempts = UserQuizAttempt.query.filter_by(user_id=user_id)\
-                .order_by(UserQuizAttempt.started_at.desc()).limit(5).all()
+            all_recent_attempts = sorted(user_attempts, key=lambda x: x.started_at, reverse=True)[:5]
             
             for attempt in all_recent_attempts:
                 quiz = Quiz.query.get(attempt.quiz_id)
                 if quiz:
-                    time_spent = 0
-                    if attempt.completed_at:
-                        # Convert timedelta to total seconds (as integer)
-                        time_spent = int((attempt.completed_at - attempt.started_at).total_seconds())
+                    time_spent_seconds = 0
+                    if attempt.completed_at and attempt.started_at:
+                        time_diff = attempt.completed_at - attempt.started_at
+                        time_spent_seconds = int(time_diff.total_seconds())
+                    
                     recent_detailed_attempts.append({
                         'id': attempt.id,
                         'quiz_id': quiz.id,
                         'quiz_title': quiz.title,
                         'date': attempt.started_at.strftime('%Y-%m-%d'),
-                        'score': attempt.score if attempt.score is not None else 'N/A',
-                        'time_spent': time_spent,
-                        'status': 'completed' if attempt.completed_at != None else 'in_progress'
+                        'score': round(attempt.score) if attempt.score is not None else 'N/A',
+                        'time_spent': time_spent_seconds,
+                        'status': 'completed' if attempt.completed_at else 'in_progress'
                     })
+
+            # Overall progress statistics (for current user)
+            total_questions_answered = 0
+            correct_answers_total = 0
             
-            # Progress statistics
-            total_questions = 0
-            correct_answers = 0
-            
-            for attempt in user_attempts:
+            for attempt in completed_attempts:
                 answers = UserAnswer.query.filter_by(attempt_id=attempt.id).all()
-                total_questions += len(answers)
+                total_questions_answered += len(answers)
                 for answer in answers:
                     option = Option.query.get(answer.option_id)
                     if option and option.is_correct:
-                        correct_answers += 1
+                        correct_answers_total += 1
             
-            accuracy = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
-            
-            # Monthly activity
+            overall_accuracy = round((correct_answers_total / total_questions_answered) * 100) if total_questions_answered > 0 else 0
+
+            # Monthly activity (number of quizzes taken per month)
             monthly_activity = []
             for i in range(12):
-                month = (datetime.utcnow().month - i) % 12 or 12
-                year = datetime.utcnow().year - ((datetime.utcnow().month - i) <= 0)
-                month_name = datetime.strptime(str(month), "%m").strftime("%b")
+                # Calculate the month and year for i months ago
+                target_date = datetime.utcnow() - timedelta(days=30*i)
+                month = target_date.month
+                year = target_date.year
+                month_name = target_date.strftime("%b")
+                
                 count = UserQuizAttempt.query.filter(
                     UserQuizAttempt.user_id == user_id,
                     extract('month', UserQuizAttempt.started_at) == month,
@@ -563,7 +577,7 @@ def register_routes(app):
                 monthly_activity.append({'month': month_name, 'count': count})
             
             monthly_activity.reverse()  # Show oldest to newest
-            
+
             # Weekday activity
             weekday_activity = []
             weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -574,28 +588,28 @@ def register_routes(app):
                     extract('dow', UserQuizAttempt.started_at) == i
                 ).count()
                 weekday_activity.append({'day': day, 'count': count})
-            
+
             # Compile all statistics
             statistics = {
                 'user_id': user_id,
                 'user_name': user_name,
                 'stats': {
-                    'leaderboard': leaderboard[:10],
+                    'leaderboard': leaderboard[:10],  # Top 10 users
                     'quizzes': {
                         'attempted': total_attempted,
-                        'completed': completed_attempts,
+                        'completed': len(completed_attempts),
                         'inProgress': in_progress,
                         'averageScore': average_score,
                         'bestScore': best_score,
-                        'totalTime': total_time,
+                        'totalTime': total_time_minutes,  # in minutes
                         'scoreHistory': score_history,
                         'subjectPerformance': subject_performance,
                         'recentAttempts': recent_detailed_attempts
                     },
                     'progress': {
-                        'totalQuestions': total_questions,
-                        'correctAnswers': correct_answers,
-                        'accuracy': accuracy,
+                        'totalQuestions': total_questions_answered,
+                        'correctAnswers': correct_answers_total,
+                        'accuracy': overall_accuracy,
                         'monthlyActivity': monthly_activity,
                         'weekdayActivity': weekday_activity
                     },
@@ -608,8 +622,11 @@ def register_routes(app):
             }
             
             return jsonify(statistics)
+            
         except Exception as e:
             current_app.logger.error(f"Error in user statistics: {str(e)}")
+            import traceback
+            current_app.logger.error(f"Traceback: {traceback.format_exc()}")
             return jsonify({"message": f"Error retrieving statistics: {str(e)}", "status": "error"}), 500
 
     @app.route('/api/user/profile', methods=['PUT'])
